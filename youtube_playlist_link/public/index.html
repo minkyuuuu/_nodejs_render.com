@@ -191,4 +191,388 @@
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444; 
         }
-        .restore-list { flex: 1; overflow-y: auto
+        .restore-list { flex: 1; overflow-y: auto; }
+        .restore-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; border-bottom: 1px solid #333;
+        }
+        .restore-item:last-child { border-bottom: none; }
+        .restore-item span { font-size: 0.9rem; color: #aaa; }
+        .btn-do-restore {
+            padding: 4px 10px; background: #0e639c; color: white; border: none; border-radius: 4px; cursor: pointer;
+        }
+        .btn-do-restore:hover { background: #1177bb; }
+        
+        .empty-state { text-align: center; margin-top: 100px; color: #555; }
+        .empty-state i { font-size: 4rem; margin-bottom: 20px; color: #333; }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #333;
+            border-top: 4px solid var(--accent-color); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fab fa-youtube"></i> 유튜버 재생목록</h2>
+            <div class="add-channel-box">
+                <input type="text" id="channelInput" placeholder="채널 핸들 입력 (@...)" onkeypress="if(event.keyCode==13) document.getElementById('addChannelBtn').click()">
+                <button id="addChannelBtn"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <div class="channel-list" id="channelListWrapper"></div>
+    </aside>
+
+    <main class="main-content">
+        <div class="main-header">
+            <div class="header-title-area">
+                <h1 id="currentPlaylistTitle">Select Playlist</h1>
+            </div>
+            <div class="header-actions" id="headerActions">
+                <button class="header-btn primary" onclick="playFirstVideo()">
+                    <i class="fas fa-play"></i> Modal
+                </button>
+                <button class="header-btn" onclick="openInNewTab()">
+                    <i class="fas fa-external-link-alt"></i> New Tab
+                </button>
+            </div>
+        </div>
+        <div class="video-list-container" id="videoListContainer">
+            <div class="empty-state">
+                <i class="fab fa-youtube"></i>
+                <h3>왼쪽에서 재생목록을 선택하세요.</h3>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="playerModal">
+        <div class="player-wrapper">
+            <div class="player-content">
+                <div class="video-container">
+                    <iframe id="youtubePlayer" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                </div>
+            </div>
+            <button class="close-btn-side" onclick="closePlayer()" title="닫기"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="restoreModal">
+        <div class="restore-content">
+            <div class="restore-header">
+                <h3><i class="fas fa-trash-restore"></i> 숨겨진 재생목록 복구</h3>
+                <button onclick="closeRestoreModal()" style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1.2rem;">×</button>
+            </div>
+            <div class="restore-list" id="restoreListContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // [중요] 배포 시 빈 문자열로 설정하여 현재 호스트 사용
+        const API_SERVER_URL = '';
+        
+        let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
+        let hiddenPlaylists = JSON.parse(localStorage.getItem('hiddenPlaylists')) || [];
+        
+        let currentPlaylistId = null;
+        let currentVideoList = [];
+        let dragStartIndex;
+
+        window.addEventListener('load', () => { renderChannelList(); });
+
+        // [중요] 한글 및 인코딩된 URL 처리
+        function extractHandle(input) {
+            try {
+                input = decodeURIComponent(input);
+            } catch (e) {
+                console.error('URL 디코딩 실패', e);
+            }
+
+            if (input.startsWith('@')) return input;
+            const match = input.match(/@([^/?&]+)/);
+            if (match) return '@' + match[1];
+            return input;
+        }
+
+        document.getElementById('addChannelBtn').addEventListener('click', async () => {
+            const inputElement = document.getElementById('channelInput');
+            const rawInput = inputElement.value.trim();
+            if (!rawInput) return alert('핸들(@이름)을 입력해주세요.');
+
+            const handle = extractHandle(rawInput);
+            if (myChannels.some(ch => ch.handle === handle)) return alert('이미 추가된 채널입니다.');
+
+            try {
+                inputElement.placeholder = "Searching...";
+                const response = await fetch(`${API_SERVER_URL}/api/find-channel?handle=${encodeURIComponent(handle)}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '채널을 찾을 수 없습니다.');
+                }
+                
+                const channelData = await response.json();
+                const newChannel = { ...channelData, handle }; 
+                myChannels.push(newChannel);
+                saveAndRender();
+                inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
+            } catch (error) {
+                alert(error.message); 
+                inputElement.placeholder = "채널 핸들 입력 (@...)";
+            }
+        });
+
+        // 드래그 앤 드롭
+        function addDragEventListeners() {
+            const draggables = document.querySelectorAll('.channel-item');
+            draggables.forEach(draggable => {
+                draggable.addEventListener('dragstart', dragStart);
+                draggable.addEventListener('dragover', dragOver);
+                draggable.addEventListener('drop', dragDrop);
+                draggable.addEventListener('dragenter', dragEnter);
+                draggable.addEventListener('dragleave', dragLeave);
+            });
+        }
+        function dragStart(e) { dragStartIndex = +this.getAttribute('data-index'); this.classList.add('dragging'); }
+        function dragEnter(e) { this.classList.add('over'); }
+        function dragLeave(e) { this.classList.remove('over'); }
+        function dragOver(e) { e.preventDefault(); }
+        function dragDrop(e) {
+            e.preventDefault(); 
+            const dragEndIndex = +this.getAttribute('data-index');
+            swapItems(dragStartIndex, dragEndIndex);
+            this.classList.remove('dragging'); this.classList.remove('over');
+        }
+        function swapItems(fromIndex, toIndex) {
+            const itemOne = myChannels[fromIndex];
+            myChannels.splice(fromIndex, 1);
+            myChannels.splice(toIndex, 0, itemOne);
+            saveAndRender();
+        }
+
+        function renderChannelList() {
+            const wrapper = document.getElementById('channelListWrapper');
+            wrapper.innerHTML = '';
+            myChannels.forEach((channel, index) => {
+                const div = document.createElement('div');
+                div.className = 'channel-item';
+                div.setAttribute('draggable', 'true'); 
+                div.setAttribute('data-index', index); 
+                div.innerHTML = `
+                    <div class="channel-header" onclick="togglePlaylist(this, '${channel.channelId}')">
+                        <img src="${channel.thumbnail}" class="channel-icon" alt="">
+                        <span class="channel-name">${channel.title}</span>
+                        <div class="action-area">
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                            <button class="icon-btn btn-restore" onclick="openRestoreManager(event, '${channel.channelId}')" title="숨김 목록 관리">
+                                <i class="fas fa-eye-slash"></i>
+                            </button>
+                            <button class="icon-btn btn-delete" onclick="removeChannel(event, ${index})" title="채널 삭제">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="playlist-sub-menu" id="sub-${channel.channelId}">
+                        <div style="padding:10px; text-align:center; font-size:0.8rem; color:#666;">Loading...</div>
+                    </div>
+                `;
+                wrapper.appendChild(div);
+            });
+            addDragEventListeners();
+        }
+
+        function removeChannel(e, index) {
+            e.stopPropagation();
+            if(confirm('삭제하시겠습니까?')) { myChannels.splice(index, 1); saveAndRender(); }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('myChannels', JSON.stringify(myChannels)); renderChannelList();
+        }
+
+        async function togglePlaylist(element, channelId) {
+            const subMenu = document.getElementById(`sub-${channelId}`);
+            const arrow = element.querySelector('.arrow-icon');
+            const isActive = subMenu.classList.contains('active');
+            
+            if (isActive) {
+                subMenu.classList.remove('active'); arrow.style.transform = 'rotate(0deg)';
+            } else {
+                subMenu.classList.add('active'); arrow.style.transform = 'rotate(180deg)';
+                if (!subMenu.dataset.loaded) await fetchPlaylists(channelId, subMenu);
+            }
+        }
+
+        async function fetchPlaylists(channelId, container) {
+            try {
+                const response = await fetch(`${API_SERVER_URL}/api/channel-playlists?channelId=${channelId}`);
+                const data = await response.json();
+                
+                if (data.playlists && data.playlists.length > 0) {
+                    const validPlaylists = data.playlists.filter(pl => pl.itemCount > 0 && !hiddenPlaylists.includes(pl.id));
+
+                    if (validPlaylists.length === 0) {
+                         container.innerHTML = '<div style="padding:10px; font-size:0.8rem;">No Playlists (or all hidden)</div>';
+                         return;
+                    }
+                    container.innerHTML = validPlaylists.map(pl => {
+                        const count = pl.itemCount;
+                        let formattedCount = count < 10 ? `0${count}` : count;
+                        let spacer = count >= 100 ? '' : ' ';
+                        return `
+                        <div class="playlist-item" id="pl-${pl.id}"
+                             onclick="loadVideos('${pl.id}', '${pl.title.replace(/'/g, "\\'")}', this)" title="${pl.title}">
+                            <span class="count-badge">(${formattedCount})</span>${spacer}${pl.title}
+                        </div>
+                    `}).join('');
+                    container.dataset.loaded = "true";
+                } else {
+                    container.innerHTML = '<div style="padding:10px; font-size:0.8rem;">No Playlists</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div style="padding:10px; color:#ff6b6b;">Error</div>';
+            }
+        }
+
+        async function openRestoreManager(e, channelId) {
+            e.stopPropagation();
+            const modal = document.getElementById('restoreModal');
+            const listContainer = document.getElementById('restoreListContainer');
+            listContainer.innerHTML = '<div style="padding:20px; text-align:center;">목록을 불러오는 중...</div>';
+            modal.classList.add('active');
+
+            try {
+                const response = await fetch(`${API_SERVER_URL}/api/channel-playlists?channelId=${channelId}`);
+                const data = await response.json();
+                const hiddenItems = data.playlists.filter(pl => hiddenPlaylists.includes(pl.id));
+
+                if (hiddenItems.length === 0) {
+                    listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#777;">숨겨진 재생목록이 없습니다.</div>';
+                    return;
+                }
+                listContainer.innerHTML = hiddenItems.map(pl => `
+                    <div class="restore-item">
+                        <span>${pl.title} (${pl.itemCount})</span>
+                        <button class="btn-do-restore" onclick="restorePlaylist('${pl.id}', '${channelId}')">복구</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                listContainer.innerHTML = '<div style="color:red; padding:10px;">불러오기 실패</div>';
+            }
+        }
+
+        function restorePlaylist(playlistId, channelId) {
+            hiddenPlaylists = hiddenPlaylists.filter(id => id !== playlistId);
+            localStorage.setItem('hiddenPlaylists', JSON.stringify(hiddenPlaylists));
+            alert('복구되었습니다.');
+            closeRestoreModal();
+            const subMenu = document.getElementById(`sub-${channelId}`);
+            if (subMenu && subMenu.classList.contains('active')) {
+                subMenu.dataset.loaded = ""; fetchPlaylists(channelId, subMenu);
+            }
+        }
+
+        function closeRestoreModal() { document.getElementById('restoreModal').classList.remove('active'); }
+
+        async function loadVideos(playlistId, playlistTitle, element) {
+            document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('selected'));
+            if(element) element.classList.add('selected');
+
+            currentPlaylistId = playlistId;
+            document.getElementById('currentPlaylistTitle').textContent = playlistTitle;
+            document.getElementById('headerActions').style.display = 'flex';
+
+            const container = document.getElementById('videoListContainer');
+            container.innerHTML = '<div class="empty-state"><div class="spinner" style="display:block; margin:0 auto 20px;"></div><p>Loading Videos...</p></div>';
+
+            try {
+                const response = await fetch(`${API_SERVER_URL}/api/playlist/${playlistId}`);
+                if (!response.ok) throw new Error('Failed to fetch videos');
+                const data = await response.json();
+
+                if (!data.videos || data.videos.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><p>재생 가능한 동영상이 없습니다.<br>(비공개 또는 삭제된 영상)</p></div>';
+                    if (!hiddenPlaylists.includes(playlistId)) {
+                        hiddenPlaylists.push(playlistId); localStorage.setItem('hiddenPlaylists', JSON.stringify(hiddenPlaylists));
+                    }
+                    if (element) {
+                        element.style.opacity = "0"; setTimeout(() => { element.style.display = "none"; }, 500);
+                    }
+                    return;
+                }
+
+                currentVideoList = data.videos; 
+
+                let html = '';
+                data.videos.forEach(video => {
+                    html += `
+                    <div class="video-card" onclick="openPlayer('${video.id}')">
+                        <img src="${video.thumbnail}" class="video-thumb" loading="lazy">
+                        <div class="video-details">
+                            <div class="video-title">${video.title}</div>
+                            <div class="video-meta">
+                                📅 ${video.publishedAt.split('T')[0]} • ⏱ ${formatDuration(video.duration)}
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<div class="empty-state" style="color:#ff6b6b"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+
+        function playFirstVideo() {
+            if (currentVideoList && currentVideoList.length > 0) {
+                openPlayer(currentVideoList[0].id);
+            } else {
+                alert('재생할 동영상이 없습니다.');
+            }
+        }
+
+        function openInNewTab() {
+            if (currentPlaylistId) {
+                window.open(`https://www.youtube.com/playlist?list=${currentPlaylistId}`, '_blank');
+            }
+        }
+
+        function formatDuration(isoDuration) {
+            if (!isoDuration) return '';
+            const match = isoDuration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+            if (!match) return '';
+            const hours = parseInt(match[1]) || 0;
+            const minutes = parseInt(match[2]) || 0;
+            const seconds = parseInt(match[3]) || 0;
+            let result = '';
+            if (hours > 0) result += `${hours}:`;
+            result += `${String(minutes).padStart(hours > 0 ? 2 : 1, '0')}:${String(seconds).padStart(2, '0')}`;
+            return result;
+        }
+
+        function openPlayer(videoId) {
+            const modal = document.getElementById('playerModal');
+            modal.classList.add('active');
+            document.getElementById('youtubePlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        }
+
+        function closePlayer() {
+            const modal = document.getElementById('playerModal');
+            modal.classList.remove('active');
+            document.getElementById('youtubePlayer').src = "";
+        }
+        
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    if(modal.id === 'playerModal') closePlayer();
+                    if(modal.id === 'restoreModal') closeRestoreModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
