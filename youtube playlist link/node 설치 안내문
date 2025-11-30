@@ -1,0 +1,105 @@
+
+https://gemini.google.com/share/7da9464cc6a0 여기 제미나이 대화창 하단에 아래내용이 있습니다.
+
+
+
+네, 완성된 프로그램을 다른 컴퓨터로 옮겨서 실행하기 위한 **[배포 및 설치 가이드]**를 정리해 드릴게요.
+
+나중에 새 컴퓨터에 세팅할 때 이 글만 보고 따라 하시면 됩니다.
+
+🚀 유튜버 재생목록 플레이어 배포/이전 가이드
+새로운 컴퓨터(윈도우 기준)에서 이 프로그램을 실행하기 위한 절차입니다.
+
+1. Node.js 설치 (전역 설치)
+Node.js는 이 프로그램이 돌아가는 엔진이므로 컴퓨터 자체에 설치되어야 합니다.
+
+Node.js 공식 홈페이지 접속
+
+LTS 버전 (안정적 버전) 다운로드 및 설치
+
+설치 중 Add to PATH 옵션이 체크되어 있는지 확인 (기본값임)
+
+설치 완료 후 CMD(명령 프롬프트) 창을 열고 확인:
+
+DOS
+
+node -v
+(버전 숫자가 나오면 성공)
+
+2. Nodemon 설치 (전역 설치)
+Nodemon은 서버를 실행하고 코드가 바뀌면 자동으로 재시작해주는 도구입니다. 컴퓨터의 어느 폴더에서든 쓸 수 있게 **전역(Global)**으로 설치하는 것이 편합니다.
+
+CMD 창에서 아래 명령어 입력:
+
+DOS
+
+npm install -g nodemon
+(선택) 만약 설치 에러가 난다면 관리자 권한으로 CMD를 열어서 다시 시도하세요.
+
+3. 프로젝트 폴더 이동 및 모듈 설치 (지역 설치)
+이제 작성한 소스 코드를 가져오고, 그 프로젝트 전용 라이브러리(모듈)들을 설치합니다.
+
+폴더 복사:
+
+기존 컴퓨터의 youtuve playlist link 폴더를 USB나 클라우드를 통해 새 컴퓨터로 복사합니다.
+
+주의: 폴더 안에 있는 node_modules 폴더는 복사하지 마세요. (용량이 크고, OS가 다르면 에러가 날 수 있습니다. 가서 새로 설치하는 게 정석입니다.)
+
+가져가야 할 필수 파일:
+
+public 폴더 (안에 index.html, 이미지 등)
+
+server.js
+
+.env (API 키가 들어있는 파일)
+
+package.json (만약 있다면)
+
+CMD에서 프로젝트 폴더로 이동:
+
+DOS
+
+cd "C:\경로\youtuve playlist link"
+필수 모듈 설치: 이 프로젝트에서 사용된 모듈(express, googleapis, cors, dotenv)을 해당 폴더에 설치합니다.
+
+DOS
+
+npm install express googleapis cors dotenv
+(이 명령어를 치면 자동으로 node_modules 폴더가 생성되고 필요한 파일들이 다운로드됩니다.)
+
+4. 환경 변수(.env) 확인
+가장 중요한 부분입니다. server.js가 유튜브 API를 쓰기 위해서는 열쇠(Key)가 필요합니다.
+
+프로젝트 폴더 안에 .env 파일이 있는지 확인하세요.
+
+없다면 메모장을 열어 아래 내용을 넣고 .env라는 이름으로 저장하세요.
+
+Plaintext
+
+YOUTUBE_API_KEY=여기에_당신의_API_키를_붙여넣으세요
+5. 서버 실행
+모든 준비가 끝났습니다.
+
+CMD에서 실행 명령어 입력:
+
+DOS
+
+nodemon server.js
+Server listening at http://localhost:3000 메시지가 뜨면 성공!
+
+크롬 브라우저를 켜고 주소창에 입력: http://localhost:3000
+
+📝 요약 (질문에 대한 답변)
+node, nodemon은 전역으로 설치해야 하나요?
+
+Node.js: 네, 무조건 전역(내 컴퓨터)에 설치해야 합니다.
+
+Nodemon: 네, 편의를 위해 전역(-g) 설치를 권장합니다. (만약 전역 설치가 싫다면 npx nodemon server.js로 실행 가능)
+
+모듈은 해당 프로젝트 폴더에 가서 설치하나요?
+
+네, 맞습니다. express, googleapis 같은 라이브러리는 그 프로젝트 안에서만 쓰이므로, 꼭 cd로 폴더에 들어간 뒤 npm install ... 명령어로 설치해야 합니다.
+
+프로젝트 폴더명: youtuve playlist link
+
+폴더명에 띄어쓰기가 있으므로 CMD에서 이동할 때 꼭 따옴표를 써주세요: cd "youtuve playlist link"
