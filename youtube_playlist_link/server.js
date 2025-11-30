@@ -4,34 +4,37 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-// Render가 주는 포트를 쓰거나, 없으면 3000을 써라 (순서 중요!)
+// Render 포트 우선, 없으면 3000 (순서 중요)
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.static('public'));
+
+// API 키 확인용 로그 (키가 잘 들어왔는지 서버 시작할 때 확인)
+console.log("API Key Loaded:", process.env.YOUTUBE_API_KEY ? "YES" : "NO");
 
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-// ---------------------------------------------------------
-// 1. 유튜버 핸들(ID)로 채널 정보 찾기 (추가된 기능)
-// ---------------------------------------------------------
+// 1. 유튜버 핸들(ID)로 채널 정보 찾기
 app.get('/api/find-channel', async (req, res) => {
-    const { handle } = req.query; // 클라이언트에서 ?handle=@abc 형태로 보냄
+    const { handle } = req.query;
+    console.log(`[Search Request] handle: ${handle}`); // 로그 추가
+
     if (!handle) return res.status(400).json({ error: 'Handle is required' });
 
     try {
-        // search.list를 사용하여 채널 검색
         const response = await youtube.search.list({
             part: 'snippet',
             type: 'channel',
-            q: handle, // 검색어 (@핸들)
-            maxResults: 1, // 가장 정확한 1개만
+            q: handle,
+            maxResults: 1,
         });
 
         if (response.data.items.length === 0) {
+            console.log(`[Search Fail] No channel found for: ${handle}`);
             return res.status(404).json({ error: 'Channel not found' });
         }
 
@@ -44,14 +47,16 @@ app.get('/api/find-channel', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Channel Search Error:', error.message);
-        res.status(500).json({ error: 'Failed to search channel' });
+        // [중요] Render 로그에 상세 에러 출력
+        console.error('[YouTube API Error]:', error.message);
+        if (error.response) {
+            console.error('[Error Details]:', JSON.stringify(error.response.data, null, 2));
+        }
+        res.status(500).json({ error: 'Failed to search channel (Server Error)' });
     }
 });
 
-// ---------------------------------------------------------
-// 2. 특정 채널의 재생목록 리스트 가져오기 (추가된 기능)
-// ---------------------------------------------------------
+// 2. 특정 채널의 재생목록 리스트 가져오기
 app.get('/api/channel-playlists', async (req, res) => {
     const { channelId } = req.query;
     if (!channelId) return res.status(400).json({ error: 'Channel ID is required' });
@@ -60,7 +65,6 @@ app.get('/api/channel-playlists', async (req, res) => {
         let allPlaylists = [];
         let nextPageToken = null;
 
-        // 재생목록이 50개가 넘을 수 있으니 페이지네이션 처리
         do {
             const response = await youtube.playlists.list({
                 part: 'snippet,contentDetails',
@@ -84,20 +88,17 @@ app.get('/api/channel-playlists', async (req, res) => {
         res.json({ playlists: allPlaylists });
 
     } catch (error) {
-        console.error('Playlist Fetch Error:', error.message);
+        console.error('[Playlist List Error]:', error.message);
         res.status(500).json({ error: 'Failed to fetch playlists' });
     }
 });
 
-// ---------------------------------------------------------
-// 3. 특정 재생목록의 동영상 리스트 가져오기 (기존 기능 유지)
-// ---------------------------------------------------------
+// 3. 특정 재생목록의 동영상 리스트 가져오기
 app.get('/api/playlist/:playlistId', async (req, res) => {
   const { playlistId } = req.params;
   if (!playlistId) return res.status(400).json({ error: 'Playlist ID is required' });
 
   try {
-    // 3-1. 재생목록 기본 정보
     const playlistResponse = await youtube.playlists.list({
         part: 'snippet',
         id: playlistId,
@@ -108,7 +109,6 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
     }
     const playlistTitle = playlistResponse.data.items[0].snippet.title;
 
-    // 3-2. 동영상 ID 가져오기
     let videoIds = [];
     let nextPageToken = null;
     do {
@@ -130,7 +130,6 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
         return res.json({ playlistTitle, totalCount: 0, videos: [] });
     }
 
-    // 3-3. 동영상 상세 정보 (duration 등)
     let allVideoDetails = [];
     for (let i = 0; i < videoIds.length; i += 50) {
       const videoIdChunk = videoIds.slice(i, i + 50);
@@ -149,7 +148,6 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
       duration: item.contentDetails.duration,
     }));
     
-    // 순서 정렬
     const sortedVideos = videoIds.map(id => videos.find(video => video.id === id)).filter(Boolean);
 
     res.json({
@@ -159,11 +157,11 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching YouTube data:', error.message);
+    console.error('[Video List Error]:', error.message);
     res.status(500).json({ error: 'Failed to fetch data from YouTube API.', details: error.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+  console.log(`Server listening at port ${port}`);
 });
