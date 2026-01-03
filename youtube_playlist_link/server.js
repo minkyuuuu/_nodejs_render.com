@@ -102,48 +102,72 @@ app.get('/api/channel-playlists', async (req, res) => {
     }
 });
 
-// 3. 특정 재생목록의 동영상 리스트 가져오기
+// 3. 특정 재생목록의 동영상 리스트 가져오기 (페이지네이션 적용)
+// [수정] 한 번에 다 가져오지 않고 50개씩 끊어서 반환하도록 변경
 app.get('/api/playlist/:playlistId', async (req, res) => {
   const { playlistId } = req.params;
+  const { pageToken } = req.query; // 클라이언트에서 요청한 페이지 토큰
+
   try {
-    const playlistResponse = await youtube.playlists.list({ part: 'snippet', id: playlistId });
-    if (playlistResponse.data.items.length === 0) return res.status(404).json({ error: 'Playlist not found.' });
-    const playlistTitle = playlistResponse.data.items[0].snippet.title;
+    // 1. 재생목록의 아이템들을 50개 단위로 가져옵니다.
+    const playlistItemsResponse = await youtube.playlistItems.list({
+      part: 'snippet,contentDetails',
+      playlistId: playlistId,
+      maxResults: 50,
+      pageToken: pageToken || undefined,
+    });
 
-    let videoIds = [];
-    let nextPageToken = null;
-    do {
-      const playlistItemsResponse = await youtube.playlistItems.list({
-        part: 'snippet',
-        playlistId: playlistId,
-        maxResults: 50,
-        pageToken: nextPageToken,
-      });
-      playlistItemsResponse.data.items.forEach(item => {
-        if (item.snippet?.resourceId?.videoId) videoIds.push(item.snippet.resourceId.videoId);
-      });
-      nextPageToken = playlistItemsResponse.data.nextPageToken;
-    } while (nextPageToken);
+    const items = playlistItemsResponse.data.items || [];
+    const nextPageToken = playlistItemsResponse.data.nextPageToken;
+    const totalResults = playlistItemsResponse.data.pageInfo.totalResults;
 
-    let allVideoDetails = [];
-    for (let i = 0; i < videoIds.length; i += 50) {
-      const videoIdChunk = videoIds.slice(i, i + 50);
-      const videoDetailsResponse = await youtube.videos.list({
-        part: 'snippet,contentDetails',
-        id: videoIdChunk.join(','),
-      });
-      allVideoDetails = allVideoDetails.concat(videoDetailsResponse.data.items);
+    if (items.length === 0) {
+        return res.json({ 
+            videos: [], 
+            nextPageToken: null, 
+            totalCount: totalResults 
+        });
     }
-    const videos = allVideoDetails.map(item => ({
-      id: item.id,
-      title: item.snippet.title,
-      thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default.url,
-      publishedAt: item.snippet.publishedAt,
-      duration: item.contentDetails.duration,
-    }));
-    const sortedVideos = videoIds.map(id => videos.find(video => video.id === id)).filter(Boolean);
-    res.json({ playlistTitle, totalCount: videoIds.length, videos: sortedVideos });
+
+    // 2. videoId만 추출
+    const videoIds = items.map(item => item.contentDetails?.videoId).filter(id => id);
+
+    // 3. 비디오 상세 정보(duration 등) 조회
+    let videos = [];
+    if (videoIds.length > 0) {
+        const videoDetailsResponse = await youtube.videos.list({
+            part: 'snippet,contentDetails',
+            id: videoIds.join(','),
+        });
+
+        // ID 매핑을 위한 Map 생성
+        const detailsMap = new Map();
+        videoDetailsResponse.data.items.forEach(v => {
+            detailsMap.set(v.id, v);
+        });
+
+        // 4. playlistItems 순서대로 데이터 병합
+        videos = videoIds.map(id => {
+            const detail = detailsMap.get(id);
+            if (!detail) return null;
+            return {
+                id: detail.id,
+                title: detail.snippet.title,
+                thumbnail: detail.snippet.thumbnails.medium?.url || detail.snippet.thumbnails.default.url,
+                publishedAt: detail.snippet.publishedAt,
+                duration: detail.contentDetails.duration,
+            };
+        }).filter(v => v); // null 제거
+    }
+
+    res.json({ 
+        videos, 
+        nextPageToken: nextPageToken || null, 
+        totalCount: totalResults 
+    });
+
   } catch (error) {
+    console.error('Playlist Fetch Error:', error.message);
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
