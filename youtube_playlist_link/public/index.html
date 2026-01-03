@@ -28,15 +28,10 @@
             font-family: 'Malgun Gothic', sans-serif; 
             background: var(--bg-color); 
             color: var(--text-color); 
-            
-            /* 높이 설정: 모바일 브라우저 주소창 대응 */
             height: 100vh; /* 구형 브라우저용 Fallback */
             height: 100dvh; /* Dynamic Viewport Height */
-            
             display: flex; 
             overflow: hidden; 
-            
-            /* iPad/iPhone 노치 및 상태표시줄 안전 영역 확보 */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             padding-left: env(safe-area-inset-left);
@@ -93,10 +88,8 @@
         }
         .add-channel-box button:hover { background: #1177bb; }
 
-        /* [수정] 하단 여백 150px 확보 */
         .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
         
-        /* [수정] 드래그 관련 스타일 */
         .channel-item { cursor: grab; border-bottom: 1px solid transparent; transition: background 0.1s, border-color 0.2s; border-left: 3px solid transparent; }
         .channel-item.dragging { opacity: 0.5; background: #333; }
         .channel-item.drag-over { border-top: 2px solid var(--accent-color); }
@@ -106,7 +99,6 @@
         }
         .channel-header:hover { background: var(--item-hover); }
 
-        /* 햄버거 핸들 스타일 */
         .drag-handle { color: #555; margin-right: 10px; cursor: grab; font-size: 0.9rem; padding: 2px; }
         .drag-handle:hover { color: #999; }
 
@@ -120,7 +112,6 @@
         }
 
         .action-area { display: flex; align-items: center; gap: 10px; }
-        /* [수정] 펼치기 아이콘과 우측 버튼 사이 여백 확대 (5px -> 12px) */
         .arrow-icon { font-size: 0.8rem; color: #888; transition: transform 0.3s; margin-right: 12px; }
 
         .icon-btn { 
@@ -131,7 +122,6 @@
         }
         .btn-delete:hover { background: #444; color: var(--danger-color); }
         
-        /* 재생목록 서브 메뉴 스타일 */
         .playlist-sub-menu { display: none; background: #1e1e1e; }
         .playlist-sub-menu.active { display: block; }
         .playlist-item:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
@@ -152,65 +142,88 @@
             flex: 1; display: flex; flex-direction: column; background: var(--bg-color); 
         }
 
-        /* [추가] 프로그레스 바 스타일 */
         #progressContainer { display: none; width: 100%; height: 4px; background: #333; position: relative; }
         #progressBar { width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s; }
 
-        /* [수정] 컴팩트 헤더 스타일 */
+        /* [수정] 2단 헤더 스타일 */
         .main-header { 
-            padding: 12px 30px; 
+            padding: 15px 30px; 
             background: var(--bg-color); 
             border-bottom: 1px solid var(--border-color); 
-            display: flex; justify-content: space-between; align-items: center; 
-            min-height: 70px;
-        }
-        .header-title-wrapper { display: flex; align-items: center; gap: 15px; flex: 1; overflow: hidden; }
-        
-        .title-text-group {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            display: flex; 
+            flex-direction: column; /* 세로 정렬 */
+            gap: 10px;
+            min-height: 80px;
         }
 
-        .main-header h1 { 
-            font-size: 1.3rem; color: var(--text-highlight); font-weight: normal; 
-            margin: 0; line-height: 1.2;
+        /* 1행: 타이틀 + 닫기 버튼 */
+        .header-row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
         }
-        
-        /* [수정] URL 정보 스타일 */
+        .main-header h1 { 
+            font-size: 1.4rem; 
+            color: var(--text-highlight); 
+            font-weight: normal; 
+            margin: 0; 
+            line-height: 1.3;
+            word-break: keep-all; /* 긴 타이틀 줄바꿈 처리 */
+            flex: 1;
+            margin-right: 20px;
+        }
+
+        /* 2행: URL 정보 + 액션 버튼들 */
+        .header-row-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+
         .channel-url-info {
             font-size: 0.7rem; 
             color: #888;
-            line-height: 1.2;
-            margin-top: 2px; 
+            line-height: 1.4;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 50%;
         }
 
-        .header-actions { display: none; gap: 10px; } 
+        .header-actions { 
+            display: none; /* 기본 숨김, 선택 시 표시 */
+            gap: 8px; 
+            align-items: center; 
+        } 
+        
         .header-btn { 
-            padding: 6px 15px; border: 1px solid #444; background: #252526; 
-            color: #ccc; border-radius: 4px; cursor: pointer; font-size: 0.9rem; 
-            display: flex; align-items: center; gap: 6px; transition: all 0.2s; 
+            padding: 6px 12px; border: 1px solid #444; background: #252526; 
+            color: #ccc; border-radius: 4px; cursor: pointer; font-size: 0.85rem; 
+            display: flex; align-items: center; gap: 5px; transition: all 0.2s; 
+            white-space: nowrap;
         }
-        .header-btn:hover { background: #37373d; color: white; border-color: #666; }
-        .header-btn.primary { background: #0e639c; border: none; color: white; }
-        .header-btn.primary:hover { background: #1177bb; }
+        .header-btn:hover { background: #3e3e42; color: #fff; }
+        .header-btn.primary { background: #0e639c; color: white; border: none; }
+        .header-btn.success { background: #28a745; color: white; border: none; }
+        
+        .sort-btn { font-size: 1.1rem; color: #666; background: none; border: none; cursor: pointer; padding: 5px; transition: color 0.2s; }
+        .sort-btn.active { color: var(--accent-color); }
+        .divider { width: 1px; height: 18px; background: #444; margin: 0 4px; }
 
         .video-list-container { flex: 1; overflow-y: auto; padding: 30px; }
 
-        /* [수정] 비디오 카드 스타일 (iPad 대응) */
         .video-card { 
             display: flex; 
-            align-items: center; /* 세로 중앙 정렬 */
+            align-items: center; 
             background: #2d2d2d; 
             border-radius: 6px; 
-            padding: 18px 12px 12px 12px; /* 상단 여백 확보 */
+            padding: 18px 12px 12px 12px; 
             margin-bottom: 16px; 
             cursor: pointer; 
             border: 1px solid transparent; 
-            position: relative; /* 썸네일 기준점 */
+            position: relative; 
         }
         .video-card:hover { transform: translateY(-2px); background: #333333; border-color: #555; }
         
@@ -226,7 +239,6 @@
             object-fit: cover; display: block;
         }
 
-        /* [수정] 배지 스타일 (iPad 대응) */
         .video-index-badge {
             position: absolute;
             top: -16px;       
@@ -243,7 +255,6 @@
         .video-title { font-size: 1rem; margin-bottom: 8px; color: var(--text-highlight); line-height: 1.4; }
         .video-meta { font-size: 0.85rem; color: #888; }
 
-        /* 모달 스타일 */
         .modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.9); z-index: 1000; 
@@ -303,27 +314,30 @@
     </aside>
 
     <main class="main-content">
-        <!-- [추가] 프로그레스 바 영역 -->
         <div id="progressContainer"><div id="progressBar"></div></div>
 
         <div class="main-header">
-            <div class="header-title-wrapper">
-                <div class="title-text-group">
-                    <h1 id="currentPlaylistTitle">Select Playlist</h1>
-                    <!-- [수정] URL 및 ID 정보 표시 영역 -->
-                    <div id="channelUrl" class="channel-url-info"></div>
-                </div>
+            <!-- [수정] 1행: 타이틀 및 X 아이콘 -->
+            <div class="header-row-top">
+                <h1 id="currentPlaylistTitle">Select Playlist</h1>
                 <i class="fas fa-times" id="mainClearBtn" style="display:none; cursor:pointer; color:#666;" onclick="location.reload()" title="화면 비우기"></i>
             </div>
-            <div class="header-actions" id="headerActions">
-                <button class="header-btn primary" onclick="playFirstVideo()">
-                    <i class="fas fa-play"></i> Modal
-                </button>
-                <button class="header-btn" onclick="openInNewTab()">
-                    <i class="fas fa-external-link-alt"></i> New Tab
-                </button>
+            
+            <!-- [수정] 2행: URL 정보 및 액션 버튼들 -->
+            <div class="header-row-bottom">
+                <div id="channelUrl" class="channel-url-info"></div>
+                
+                <div class="header-actions" id="headerActions">
+                    <button class="sort-btn" id="sortAsc" onclick="changeSort('asc')" title="오래된순"><i class="fas fa-sort-amount-up-alt"></i></button>
+                    <button class="sort-btn" id="sortDesc" onclick="changeSort('desc')" title="최신순"><i class="fas fa-sort-amount-down"></i></button>
+                    <div class="divider"></div>
+                    <button class="header-btn" onclick="refreshCurrentPlaylist()" title="강제 업데이트"><i class="fas fa-sync-alt"></i> Update</button>
+                    <button class="header-btn primary" onclick="openInNewTab()" title="유튜브 페이지 열기"><i class="fas fa-external-link-alt"></i> New Tab</button>
+                    <button class="header-btn success" id="copyBtn" onclick="copyNextLink()" title="순차적 링크 복사"><i class="fas fa-copy"></i> NotebookLM (Ready)</button>
+                </div>
             </div>
         </div>
+
         <div class="video-list-container" id="videoListContainer">
             <div class="empty-state">
                 <i class="fab fa-youtube"></i>
@@ -348,10 +362,16 @@
         
         let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
         let currentPlaylistId = null;
+        let currentPlaylistTitle = ''; // 재로딩을 위한 타이틀 저장
+        let currentChannelId = null; // 재로딩을 위한 채널ID 저장
         let currentVideoList = [];
-        let loadingPlaylistId = null; // 현재 로딩 중인 ID 추적 (중단용)
+        let loadingPlaylistId = null; 
         let dragStartIndex;
         let dragSrcEl = null;
+        
+        // [추가] 동영상 목록 앱 기능 변수
+        let currentSort = 'asc';
+        let copyIndex = 0;
 
         window.addEventListener('load', () => { renderChannelList(); });
 
@@ -396,7 +416,6 @@
             const rawInput = inputElement.value.trim();
             if (!rawInput) return;
 
-            // 방어 코드: 입력값 검증
             let handle = '';
             const videoMatch = rawInput.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/);
             const handleMatch = rawInput.match(/(@[^\/\s?]+)/);
@@ -530,13 +549,18 @@
             } catch (e) { container.innerHTML = 'Error'; }
         }
 
-        // [수정] 50개 단위 페이징 로딩 및 프로그레스 바 적용
         async function loadVideos(playlistId, playlistTitle, element, channelId) {
             document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('selected'));
             if(element) element.classList.add('selected');
             
             currentPlaylistId = playlistId;
-            loadingPlaylistId = playlistId; // 로딩 ID 설정
+            currentPlaylistTitle = playlistTitle;
+            currentChannelId = channelId;
+            loadingPlaylistId = playlistId; 
+            
+            // [추가] 초기화
+            copyIndex = 0;
+            currentSort = 'asc';
 
             document.getElementById('currentPlaylistTitle').textContent = playlistTitle;
             
@@ -553,6 +577,7 @@
             const container = document.getElementById('videoListContainer');
             container.innerHTML = '<div class="empty-state"><div class="spinner"></div><p id="pText">데이터를 불러오는 중...</p></div>';
             currentVideoList = []; 
+            updateCopyButtonLabel(); // 초기화된 버튼 상태 반영
 
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');
@@ -564,9 +589,8 @@
             let nextPageToken = '';
             
             try {
-                // 데이터 페이지네이션 루프
                 while (nextPageToken !== null) {
-                    if (loadingPlaylistId !== playlistId) return; // 사용자가 다른 거 클릭하면 중단
+                    if (loadingPlaylistId !== playlistId) return; 
 
                     const url = `${API_SERVER_URL}/api/playlist/${playlistId}?pageToken=${nextPageToken}`;
                     const response = await fetch(url);
@@ -578,36 +602,22 @@
                         currentVideoList = currentVideoList.concat(data.videos);
                     }
                     
-                    nextPageToken = data.nextPageToken || null; // 다음 페이지 토큰 갱신
+                    nextPageToken = data.nextPageToken || null; 
 
                     const totalCount = data.totalCount || 0;
                     const percent = totalCount > 0 ? Math.round((currentVideoList.length / totalCount) * 100) : 0;
                     
-                    // 프로그레스 바 업데이트
                     progressBar.style.width = `${Math.min(percent, 100)}%`;
                     if(pText) pText.innerText = `로드 중... (${currentVideoList.length} / ${totalCount}) - ${Math.min(percent, 100)}%`;
+                    
+                    updateCopyButtonLabel(); // 로딩 중에도 복사 버튼 업데이트
                 }
 
                 if (loadingPlaylistId !== playlistId) return;
 
-                const totalCount = currentVideoList.length;
-                if (totalCount === 0) {
-                    container.innerHTML = '<div class="empty-state"><p>동영상이 없습니다.</p></div>';
-                } else {
-                    container.innerHTML = currentVideoList.map((v, index) => `
-                        <div class="video-card" onclick="openPlayer('${v.id}')">
-                            <div class="video-thumb-wrapper">
-                                <div class="video-index-badge">${index + 1} / ${totalCount}</div>
-                                <img src="${v.thumbnail}" class="video-thumb">
-                            </div>
-                            <div class="video-details">
-                                <div class="video-title">${v.title}</div>
-                                <div class="video-meta">📅 ${formatDateTime(v.publishedAt)} • ⏱ ${formatDuration(v.duration)}</div>
-                            </div>
-                        </div>`).join('');
-                }
+                // [추가] 로딩 완료 후 정렬 및 렌더링 호출
+                applySortAndRender();
 
-                // 로딩바 숨기기
                 setTimeout(() => {
                     if (loadingPlaylistId === playlistId) {
                         progressContainer.style.display = 'none';
@@ -622,6 +632,86 @@
             }
         }
 
+        // [추가] 동영상 목록 앱 기능 함수들
+        function refreshCurrentPlaylist() {
+            if (currentPlaylistId && currentChannelId) {
+                // 현재 선택된 요소 찾기 (스타일 유지를 위해)
+                const selectedEl = document.querySelector('.playlist-item.selected');
+                loadVideos(currentPlaylistId, currentPlaylistTitle, selectedEl, currentChannelId);
+            }
+        }
+
+        function copyNextLink() {
+            if (!currentVideoList || currentVideoList.length === 0) return alert('복사할 영상이 없습니다.');
+            if (copyIndex >= currentVideoList.length) {
+                if (confirm('모든 링크를 복사했습니다. 처음부터 다시 시작할까요?')) {
+                    copyIndex = 0;
+                    updateCopyButtonLabel();
+                }
+                return;
+            }
+            const video = currentVideoList[copyIndex];
+            const link = `https://www.youtube.com/watch?v=${video.id}`;
+            navigator.clipboard.writeText(link).then(() => {
+                copyIndex++;
+                updateCopyButtonLabel();
+            }).catch(err => alert('복사 실패'));
+        }
+
+        function updateCopyButtonLabel() {
+            const btn = document.getElementById('copyBtn');
+            const total = currentVideoList.length;
+            if (total > 0) {
+                btn.innerHTML = `<i class="fas fa-copy"></i> Copy ${copyIndex + 1} / ${total}`;
+                btn.classList.toggle('primary', copyIndex >= total);
+                btn.classList.toggle('success', copyIndex < total);
+                if(copyIndex >= total) btn.innerHTML = `<i class="fas fa-check"></i> All ${total} Copied`;
+            } else btn.innerHTML = `<i class="fas fa-copy"></i> NotebookLM (Empty)`;
+        }
+
+        function changeSort(order) {
+            currentSort = order;
+            copyIndex = 0;
+            applySortAndRender();
+        }
+
+        function applySortAndRender() {
+            if (!currentVideoList.length) return;
+            
+            // 정렬 버튼 스타일 업데이트
+            document.getElementById('sortAsc').classList.toggle('active', currentSort === 'asc');
+            document.getElementById('sortDesc').classList.toggle('active', currentSort === 'desc');
+            
+            // 데이터 정렬
+            currentVideoList.sort((a, b) => {
+                const dateA = new Date(a.publishedAt);
+                const dateB = new Date(b.publishedAt);
+                return currentSort === 'asc' ? dateA - dateB : dateB - dateA;
+            });
+            
+            updateCopyButtonLabel();
+            
+            const container = document.getElementById('videoListContainer');
+            const totalCount = currentVideoList.length;
+
+            if (totalCount === 0) {
+                container.innerHTML = '<div class="empty-state"><p>동영상이 없습니다.</p></div>';
+                return;
+            }
+
+            container.innerHTML = currentVideoList.map((v, index) => `
+                <div class="video-card" onclick="openPlayer('${v.id}')">
+                    <div class="video-thumb-wrapper">
+                        <div class="video-index-badge">${index + 1} / ${totalCount}</div>
+                        <img src="${v.thumbnail}" class="video-thumb">
+                    </div>
+                    <div class="video-details">
+                        <div class="video-title">${v.title}</div>
+                        <div class="video-meta">📅 ${formatDateTime(v.publishedAt)} • ⏱ ${formatDuration(v.duration)}</div>
+                    </div>
+                </div>`).join('');
+        }
+
         function saveAndRender() { localStorage.setItem('myChannels', JSON.stringify(myChannels)); renderChannelList(); }
         function removeChannel(e, index) { e.stopPropagation(); if(confirm('삭제?')) { myChannels.splice(index, 1); saveAndRender(); } }
         function openPlayer(videoId) { 
@@ -632,7 +722,7 @@
             document.getElementById('playerModal').classList.remove('active'); 
             document.getElementById('youtubePlayer').src = ""; 
         }
-        function playFirstVideo() { if(currentVideoList.length) openPlayer(currentVideoList[0].id); }
+        // [수정] playFirstVideo 함수 삭제됨 (모달 버튼 제거로 인해 불필요)
         function openInNewTab() { if(currentPlaylistId) window.open(`https://www.youtube.com/playlist?list=${currentPlaylistId}`, '_blank'); }
         
         function formatDuration(iso) { 
