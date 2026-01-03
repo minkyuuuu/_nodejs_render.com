@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Dark Library</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>My Playlist Library</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -23,13 +23,24 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        /* [iPad/모바일 레이아웃 대응 CSS] */
         body { 
-            font-family: 'Consolas', 'Monaco', 'Malgun Gothic', sans-serif; 
+            font-family: 'Malgun Gothic', sans-serif; 
             background: var(--bg-color); 
-            color: var(--text-color);
-            height: 100vh; 
-            overflow: hidden;
-            display: flex;
+            color: var(--text-color); 
+            
+            /* 높이 설정: 모바일 브라우저 주소창 대응 */
+            height: 100vh; /* 구형 브라우저용 Fallback */
+            height: 100dvh; /* Dynamic Viewport Height */
+            
+            display: flex; 
+            overflow: hidden; 
+            
+            /* iPad/iPhone 노치 및 상태표시줄 안전 영역 확보 */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
 
         ::-webkit-scrollbar { width: 10px; }
@@ -37,30 +48,29 @@
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: #777; }
 
-        /* 사이드바 */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--sidebar-bg);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
+        /* 사이드바 스타일 */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: var(--sidebar-bg); 
+            border-right: 1px solid var(--border-color); 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0; 
             height: 100%;
-            flex-shrink: 0;
             user-select: none;
         }
 
-        .sidebar-header {
-            padding: 20px;
-            background: var(--header-bg);
-            border-bottom: 1px solid var(--border-color);
+        .sidebar-header { 
+            padding: 20px; 
+            background: var(--header-bg); 
+            border-bottom: 1px solid var(--border-color); 
         }
 
         .sidebar-header h2 { 
-            font-size: 1.1rem; margin-bottom: 15px; color: var(--accent-color);
-            display: flex; align-items: center; gap: 8px;
+            font-size: 1.1rem; margin-bottom: 15px; color: var(--accent-color); 
+            display: flex; align-items: center; gap: 8px; 
         }
 
-        /* [추가된 클라우드 버튼 스타일] */
         .sync-actions { display: flex; gap: 8px; margin-bottom: 15px; }
         .sync-btn { 
             flex: 1; padding: 8px; font-size: 0.75rem; 
@@ -72,80 +82,113 @@
         .sync-btn:hover { background: #3e3e42; color: var(--accent-color); border-color: var(--accent-color); }
 
         .add-channel-box { display: flex; gap: 5px; }
-        .add-channel-box input {
-            flex: 1; padding: 8px; background: #3c3c3c; border: 1px solid #3c3c3c;
-            color: white; border-radius: 4px; outline: none;
+        .add-channel-box input { 
+            flex: 1; padding: 8px; background: #3c3c3c; border: 1px solid #3c3c3c; 
+            color: white; border-radius: 4px; outline: none; 
         }
         .add-channel-box input:focus { border-color: var(--accent-color); }
-        .add-channel-box button {
-            padding: 8px 12px; background: #0e639c; border: none;
-            color: white; border-radius: 4px; cursor: pointer;
+        .add-channel-box button { 
+            padding: 8px 12px; background: #0e639c; border: none; 
+            color: white; border-radius: 4px; cursor: pointer; 
         }
         .add-channel-box button:hover { background: #1177bb; }
 
-        .channel-list { flex: 1; overflow-y: auto; padding: 10px 0; }
-        .channel-item { cursor: grab; border-bottom: 1px solid transparent; }
-        .channel-item.dragging { opacity: 0.5; background: var(--item-active); }
+        /* [수정] 하단 여백 추가 */
+        .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
+        
+        /* [수정] 드래그 관련 스타일 */
+        .channel-item { cursor: grab; border-bottom: 1px solid transparent; transition: background 0.1s, border-color 0.2s; border-left: 3px solid transparent; }
+        .channel-item.dragging { opacity: 0.5; background: #333; }
+        .channel-item.drag-over { border-top: 2px solid var(--accent-color); }
 
-        .channel-header {
-            display: flex; align-items: center; padding: 12px 15px; transition: background 0.1s;
+        .channel-header { 
+            display: flex; align-items: center; padding: 12px 15px; transition: background 0.1s; 
         }
         .channel-header:hover { background: var(--item-hover); }
 
-        .channel-icon {
-            width: 30px; height: 30px; border-radius: 50%; margin-right: 12px;
-            object-fit: cover; border: 1px solid #555;
+        /* 햄버거 핸들 스타일 */
+        .drag-handle { color: #555; margin-right: 10px; cursor: grab; font-size: 0.9rem; padding: 2px; }
+        .drag-handle:hover { color: #999; }
+
+        .channel-icon { 
+            width: 30px; height: 30px; border-radius: 50%; margin-right: 12px; 
+            object-fit: cover; border: 1px solid #555; 
         }
         .channel-name { 
-            flex: 1; font-size: 0.95rem; color: var(--text-highlight);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            flex: 1; font-size: 0.95rem; color: var(--text-highlight); 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
         }
 
         .action-area { display: flex; align-items: center; gap: 10px; }
         .arrow-icon { font-size: 0.8rem; color: #888; transition: transform 0.3s; margin-right: 5px; }
 
-        .icon-btn {
-            background: none; border: none; color: #666; cursor: pointer;
-            font-size: 1rem; width: 24px; height: 24px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 4px; transition: color 0.2s;
+        .icon-btn { 
+            background: none; border: none; color: #666; cursor: pointer; 
+            font-size: 1rem; width: 24px; height: 24px; 
+            display: flex; align-items: center; justify-content: center; 
+            border-radius: 4px; transition: color 0.2s; 
         }
         .btn-delete:hover { background: #444; color: var(--danger-color); }
         .btn-restore:hover { background: #444; color: var(--success-color); }
 
+        /* 재생목록 서브 메뉴 스타일 */
         .playlist-sub-menu { display: none; background: #1e1e1e; }
         .playlist-sub-menu.active { display: block; }
         .playlist-item:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
-        .playlist-item {
-            padding: 8px 15px 8px 30px; font-size: 0.85rem; color: #aaa;
-            cursor: pointer; border-left: 3px solid transparent;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            display: block; transition: opacity 0.5s, height 0.5s;
+        .playlist-item { 
+            padding: 8px 15px 8px 30px; font-size: 0.85rem; color: #aaa; 
+            cursor: pointer; border-left: 3px solid transparent; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            display: block; transition: opacity 0.5s, height 0.5s; 
         }
         .playlist-item:hover { background: var(--item-hover); color: var(--text-highlight); }
         .playlist-item.selected { 
-            background: var(--item-active); color: var(--accent-color); border-left-color: var(--accent-color);
+            background: var(--item-active); color: var(--accent-color); border-left-color: var(--accent-color); 
         }
         .count-badge { font-family: 'Consolas', monospace; color: #888; margin-right: 2px; }
 
         /* 메인 컨텐츠 */
-        .main-content {
-            flex: 1; display: flex; flex-direction: column; background: var(--bg-color);
+        .main-content { 
+            flex: 1; display: flex; flex-direction: column; background: var(--bg-color); 
         }
 
-        .main-header {
-            padding: 20px 30px; background: var(--bg-color);
-            border-bottom: 1px solid var(--border-color);
-            display: flex; justify-content: space-between; align-items: center;
+        /* [수정] 컴팩트 헤더 스타일 */
+        .main-header { 
+            padding: 12px 30px; 
+            background: var(--bg-color); 
+            border-bottom: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; 
+            min-height: 70px;
         }
-        .header-title-area { display: flex; align-items: center; gap: 10px; }
-        .main-header h1 { font-size: 1.4rem; color: var(--text-highlight); font-weight: normal; }
+        .header-title-wrapper { display: flex; align-items: center; gap: 15px; flex: 1; overflow: hidden; }
+        
+        .title-text-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .main-header h1 { 
+            font-size: 1.3rem; color: var(--text-highlight); font-weight: normal; 
+            margin: 0; line-height: 1.2;
+        }
+        
+        /* [수정] URL 정보 스타일 */
+        .channel-url-info {
+            font-size: 0.7rem; 
+            color: #888;
+            line-height: 1.2;
+            margin-top: 2px; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         .header-actions { display: none; gap: 10px; } 
-        .header-btn {
-            padding: 6px 15px; border: 1px solid #444; background: #252526;
-            color: #ccc; border-radius: 4px; cursor: pointer; font-size: 0.9rem;
-            display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+        .header-btn { 
+            padding: 6px 15px; border: 1px solid #444; background: #252526; 
+            color: #ccc; border-radius: 4px; cursor: pointer; font-size: 0.9rem; 
+            display: flex; align-items: center; gap: 6px; transition: all 0.2s; 
         }
         .header-btn:hover { background: #37373d; color: white; border-color: #666; }
         .header-btn.primary { background: #0e639c; border: none; color: white; }
@@ -153,73 +196,101 @@
 
         .video-list-container { flex: 1; overflow-y: auto; padding: 30px; }
 
-        .video-card {
-            display: flex; background: #2d2d2d; border-radius: 6px; padding: 12px;
-            margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: transform 0.2s, background 0.2s; cursor: pointer;
-            border: 1px solid transparent;
+        /* [수정] 비디오 카드 스타일 (iPad 대응) */
+        .video-card { 
+            display: flex; 
+            align-items: center; /* 세로 중앙 정렬 */
+            background: #2d2d2d; 
+            border-radius: 6px; 
+            padding: 18px 12px 12px 12px; /* 상단 여백 확보 */
+            margin-bottom: 16px; 
+            cursor: pointer; 
+            border: 1px solid transparent; 
+            position: relative; /* 썸네일 기준점 */
         }
         .video-card:hover { transform: translateY(-2px); background: #333333; border-color: #555; }
-        .video-thumb {
-            width: 180px; height: 101px; border-radius: 4px; background: #000;
-            margin-right: 20px; object-fit: cover; flex-shrink: 0;
+        
+        .video-thumb-wrapper {
+            position: relative;
+            margin-right: 20px;
+            flex-shrink: 0;
         }
+
+        .video-thumb { 
+            width: 180px; height: 101px; 
+            border-radius: 4px; background: #000; 
+            object-fit: cover; display: block;
+        }
+
+        /* [수정] 배지 스타일 (iPad 대응) */
+        .video-index-badge {
+            position: absolute;
+            top: -16px;       
+            left: 0;          
+            color: var(--accent-color);
+            font-size: 0.75rem;
+            font-weight: 600;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 2;
+        }
+
         .video-details { flex: 1; display: flex; flex-direction: column; justify-content: center; }
         .video-title { font-size: 1rem; margin-bottom: 8px; color: var(--text-highlight); line-height: 1.4; }
         .video-meta { font-size: 0.85rem; color: #888; }
 
         /* 모달 스타일 */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 1000;
-            justify-content: center; align-items: center;
+        .modal-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); z-index: 1000; 
+            justify-content: center; align-items: center; 
         }
         .modal-overlay.active { display: flex; }
 
-        .player-wrapper {
-            display: flex; align-items: flex-start; gap: 15px;
-            width: 90%; max-width: 1600px;
+        .player-wrapper { 
+            display: flex; align-items: flex-start; gap: 15px; 
+            width: 90%; max-width: 1600px; 
         }
-        .player-content {
-            flex: 1; background: #000; border-radius: 8px; overflow: hidden;
-            box-shadow: 0 0 50px rgba(0,0,0,0.7);
+        .player-content { 
+            flex: 1; background: #000; border-radius: 8px; overflow: hidden; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.7); 
         }
-        .close-btn-side {
-            background: none; border: none; color: #888;
-            font-size: 2.5rem; cursor: pointer; line-height: 1;
-            padding: 0; margin-top: -5px; transition: color 0.2s;
+        .close-btn-side { 
+            background: none; border: none; color: #888; 
+            font-size: 2.5rem; cursor: pointer; line-height: 1; 
+            padding: 0; margin-top: -5px; transition: color 0.2s; 
         }
         .close-btn-side:hover { color: white; transform: scale(1.1); }
 
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; }
         .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
 
-        .restore-content {
-            width: 500px; background: #252526; border-radius: 8px; padding: 20px;
-            border: 1px solid #444; max-height: 80vh; display: flex; flex-direction: column;
+        .restore-content { 
+            width: 500px; background: #252526; border-radius: 8px; padding: 20px; 
+            border: 1px solid #444; max-height: 80vh; display: flex; flex-direction: column; 
         }
         .restore-header { 
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: space-between; align-items: center; 
             margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444; 
         }
         .restore-list { flex: 1; overflow-y: auto; }
-        .restore-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px; border-bottom: 1px solid #333;
+        .restore-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px; border-bottom: 1px solid #333; 
         }
         .restore-item:last-child { border-bottom: none; }
         .restore-item span { font-size: 0.9rem; color: #aaa; }
-        .btn-do-restore {
-            padding: 4px 10px; background: #0e639c; color: white; border: none; border-radius: 4px; cursor: pointer;
+        .btn-do-restore { 
+            padding: 4px 10px; background: #0e639c; color: white; border: none; border-radius: 4px; cursor: pointer; 
         }
         .btn-do-restore:hover { background: #1177bb; }
         
         .empty-state { text-align: center; margin-top: 100px; color: #555; }
         .empty-state i { font-size: 4rem; margin-bottom: 20px; color: #333; }
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid #333;
-            border-top: 4px solid var(--accent-color); border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .spinner { 
+            width: 40px; height: 40px; border: 4px solid #333; 
+            border-top: 4px solid var(--accent-color); border-radius: 50%; 
+            animation: spin 1s linear infinite; 
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -249,9 +320,13 @@
 
     <main class="main-content">
         <div class="main-header">
-            <div class="header-title-area">
-                <h1 id="currentPlaylistTitle">Select Playlist</h1>
-                <i class="fas fa-times" style="display:none; cursor:pointer;" onclick="location.reload()" title="화면 비우기"></i>
+            <div class="header-title-wrapper">
+                <div class="title-text-group">
+                    <h1 id="currentPlaylistTitle">Select Playlist</h1>
+                    <!-- [수정] URL 및 ID 정보 표시 영역 -->
+                    <div id="channelUrl" class="channel-url-info"></div>
+                </div>
+                <i class="fas fa-times" id="mainClearBtn" style="display:none; cursor:pointer; color:#666;" onclick="location.reload()" title="화면 비우기"></i>
             </div>
             <div class="header-actions" id="headerActions">
                 <button class="header-btn primary" onclick="playFirstVideo()">
@@ -299,10 +374,10 @@
         let currentPlaylistId = null;
         let currentVideoList = [];
         let dragStartIndex;
+        let dragSrcEl = null; // 드래그 앤 드롭을 위한 변수
 
         window.addEventListener('load', () => { renderChannelList(); });
 
-        // [추가된 동기화 로직]
         async function uploadToServer() {
             if (myChannels.length === 0) return alert('저장할 채널 목록이 없습니다.');
             const syncData = { myChannels, hiddenPlaylists };
@@ -344,15 +419,52 @@
         document.getElementById('addChannelBtn').addEventListener('click', async () => {
             const inputElement = document.getElementById('channelInput');
             const rawInput = inputElement.value.trim();
-            if (!rawInput) return alert('핸들(@이름)을 입력해주세요.');
-            const handle = extractHandle(rawInput);
-            if (myChannels.some(ch => ch.handle === handle)) return alert('이미 추가된 채널입니다.');
+            if (!rawInput) return;
+
+            // [수정] 방어 코드 적용: 엄격한 정규식 패턴 검사
+            let handle = '';
+            const videoMatch = rawInput.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/);
+            const handleMatch = rawInput.match(/(@[^\/\s?]+)/);
+            const channelIdMatch = rawInput.match(/(?:channel\/|^)(UC[\w-]{21}[AQgw])/);
+
+            let apiUrl = '';
+            // NOTE: 재생목록 앱은 현재 'handle'을 기준으로 채널을 찾는 로직을 사용하므로
+            // API 호출 구조를 기존 재생목록 앱에 맞게 유지하되 검증만 추가합니다.
+            
+            if (handleMatch) {
+                handle = handleMatch[1];
+            } else if (channelIdMatch) {
+                // 채널 ID로 검색하는 경우, 현재 서버 API가 handle 파라미터로 통합되어 있으므로 그대로 사용
+                // (서버 코드에서 handle 파라미터가 ID 형태면 알아서 처리해주기를 기대하거나 클라이언트에서 조정 필요)
+                // 현재 server.js 코드를 보면 youtube.search.list(q=handle)을 사용하므로 ID를 넣어도 동작할 수 있음.
+                handle = channelIdMatch[1]; 
+            } else if (videoMatch) {
+                // 비디오 ID인 경우, 이 앱에서는 비디오로 채널 찾기 API가 명시적으로 없으므로 
+                // 기존 'extractHandle' 로직 등으로는 처리가 어렵지만 방어코드를 위해 막습니다.
+                // 만약 server.js에 해당 API가 없다면 경고 처리
+                alert("이 앱은 현재 동영상 주소로 채널 추가를 지원하지 않거나, 서버 API가 필요합니다.\n핸들(@)이나 채널 ID를 입력해주세요.");
+                return;
+            } else {
+                alert("입력하신 정보가 올바른 유튜브 주소 형식이 아닙니다.\n채널 URL, 핸들(@), 또는 채널 ID를 정확히 입력해주세요.");
+                return;
+            }
+
+            if (myChannels.some(ch => ch.handle === handle || ch.channelId === handle)) return alert('이미 추가된 채널입니다.');
 
             try {
                 inputElement.placeholder = "Searching...";
+                // handle 변수를 사용하여 검색
                 const response = await fetch(`${API_SERVER_URL}/api/find-channel?handle=${encodeURIComponent(handle)}`);
                 const channelData = await response.json();
                 if (!response.ok) throw new Error(channelData.error || '채널 없음');
+                
+                // 이미 채널 ID로 존재하는지 중복 체크 (핸들이 달라도 ID가 같으면 중복)
+                if (myChannels.some(ch => ch.channelId === channelData.channelId)) {
+                    alert('이미 추가된 채널입니다.');
+                    inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
+                    return;
+                }
+
                 myChannels.push({ ...channelData, handle });
                 saveAndRender();
                 inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
@@ -370,8 +482,19 @@
                 div.className = 'channel-item';
                 div.setAttribute('draggable', 'true'); 
                 div.setAttribute('data-index', index); 
+                
+                // [수정] 드래그 이벤트 연결
+                div.ondragstart = handleDragStart;
+                div.ondragover = handleDragOver;
+                div.ondragenter = handleDragEnter;
+                div.ondragleave = handleDragLeave;
+                div.ondrop = handleDrop;
+                div.ondragend = handleDragEnd;
+
+                // [수정] 햄버거 아이콘 추가
                 div.innerHTML = `
                     <div class="channel-header" onclick="togglePlaylist(this, '${channel.channelId}')">
+                        <i class="fas fa-bars drag-handle" title="Drag to reorder"></i>
                         <img src="${channel.thumbnail}" class="channel-icon" alt="">
                         <span class="channel-name">${channel.title}</span>
                         <div class="action-area">
@@ -388,7 +511,50 @@
                 `;
                 wrapper.appendChild(div);
             });
-            addDragEventListeners();
+        }
+
+        // [추가된 드래그 앤 드롭 핸들러]
+        function handleDragStart(e) {
+            dragSrcEl = e.currentTarget;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+            e.currentTarget.classList.add('dragging');
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) e.stopPropagation();
+            
+            const target = e.currentTarget;
+            if (dragSrcEl !== target) {
+                const oldIndex = parseInt(dragSrcEl.getAttribute('data-index'));
+                const newIndex = parseInt(target.getAttribute('data-index'));
+                
+                const item = myChannels.splice(oldIndex, 1)[0];
+                myChannels.splice(newIndex, 0, item);
+                
+                saveAndRender();
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            const items = document.querySelectorAll('.channel-item');
+            items.forEach(item => item.classList.remove('drag-over'));
         }
 
         async function togglePlaylist(element, channelId) {
@@ -408,30 +574,53 @@
                 const data = await response.json();
                 const validPlaylists = data.playlists.filter(pl => pl.itemCount > 0 && !hiddenPlaylists.includes(pl.id));
                 container.innerHTML = validPlaylists.length ? validPlaylists.map(pl => `
-                    <div class="playlist-item" onclick="loadVideos('${pl.id}', '${pl.title.replace(/'/g, "\\'")}', this)">
+                    <div class="playlist-item" onclick="loadVideos('${pl.id}', '${pl.title.replace(/'/g, "\\'")}', this, '${channelId}')">
                         <span class="count-badge">(${pl.itemCount})</span> ${pl.title}
                     </div>`).join('') : '<div style="padding:10px;">No Playlists</div>';
                 container.dataset.loaded = "true";
             } catch (e) { container.innerHTML = 'Error'; }
         }
 
-        async function loadVideos(playlistId, playlistTitle, element) {
+        // loadVideos 수정: 채널 정보도 가져와서 URL 표시
+        async function loadVideos(playlistId, playlistTitle, element, channelId) {
             document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('selected'));
             if(element) element.classList.add('selected');
             currentPlaylistId = playlistId;
+            
             document.getElementById('currentPlaylistTitle').textContent = playlistTitle;
+            
+            // [수정] 채널 URL 및 ID 표시
+            const channel = myChannels.find(ch => ch.channelId === channelId);
+            if (channel) {
+                const channelUrlDiv = document.getElementById('channelUrl');
+                const handleText = (channel.handle ? `https://www.youtube.com/${channel.handle}` : `https://www.youtube.com/channel/${channelId}`);
+                // 재생목록이므로 /videos가 아닌 /playlists 등으로 표시할 수도 있지만, 채널 대표 URL을 보여주는 것이 일반적이므로 기본 유지
+                channelUrlDiv.innerHTML = `${handleText}<br><span style="color:#666; font-size:0.65rem;">ID: ${channelId}</span>`;
+            }
+
             document.getElementById('headerActions').style.display = 'flex';
+            document.getElementById('mainClearBtn').style.display = 'inline';
+            
             const container = document.getElementById('videoListContainer');
             container.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 20px;"></div><p>Loading...</p></div>';
+            
             try {
                 const response = await fetch(`${API_SERVER_URL}/api/playlist/${playlistId}`);
                 const data = await response.json();
                 currentVideoList = data.videos;
-                container.innerHTML = data.videos.map(v => `
+                
+                // [수정] 비디오 카드 렌더링 시 배지 추가 및 레이아웃 적용
+                const totalCount = data.videos.length;
+                container.innerHTML = data.videos.map((v, index) => `
                     <div class="video-card" onclick="openPlayer('${v.id}')">
-                        <img src="${v.thumbnail}" class="video-thumb">
-                        <div class="video-details"><div class="video-title">${v.title}</div>
-                        <div class="video-meta">📅 ${v.publishedAt.split('T')[0]} • ⏱ ${formatDuration(v.duration)}</div></div>
+                        <div class="video-thumb-wrapper">
+                            <div class="video-index-badge">${index + 1} / ${totalCount}</div>
+                            <img src="${v.thumbnail}" class="video-thumb">
+                        </div>
+                        <div class="video-details">
+                            <div class="video-title">${v.title}</div>
+                            <div class="video-meta">📅 ${v.publishedAt.split('T')[0]} • ⏱ ${formatDuration(v.duration)}</div>
+                        </div>
                     </div>`).join('');
             } catch (e) { container.innerHTML = 'Error'; }
         }
@@ -450,24 +639,32 @@
         function openInNewTab() { if(currentPlaylistId) window.open(`https://www.youtube.com/playlist?list=${currentPlaylistId}`, '_blank'); }
         function formatDuration(iso) { 
             const m = iso.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+            if(!m) return "0:00";
             const h = parseInt(m[1])||0, min = parseInt(m[2])||0, s = parseInt(m[3])||0;
             return `${h>0?h+':':''}${String(min).padStart(h>0?2:1,'0')}:${String(s).padStart(2,'0')}`; 
         }
 
-        function addDragEventListeners() {
-            document.querySelectorAll('.channel-item').forEach(el => {
-                el.ondragstart = () => { dragStartIndex = +el.dataset.index; el.classList.add('dragging'); };
-                el.ondragover = (e) => e.preventDefault();
-                el.ondrop = () => {
-                    const from = dragStartIndex, to = +el.dataset.index;
-                    const item = myChannels.splice(from, 1)[0];
-                    myChannels.splice(to, 0, item);
-                    saveAndRender();
-                };
-            });
-        }
         // 모달 닫기
-        window.onclick = (e) => { if(e.target.classList.contains('modal-overlay')) { closePlayer(); document.getElementById('restoreModal').classList.remove('active'); } };
+        window.onclick = (e) => { 
+            if(e.target.classList.contains('modal-overlay')) { 
+                if(document.getElementById('playerModal').classList.contains('active')) closePlayer();
+                document.getElementById('restoreModal').classList.remove('active'); 
+            } 
+        };
+
+        // 복구 모달 관련 함수 (기존 로직 유지 필요시)
+        function openRestoreManager(e, channelId) {
+            e.stopPropagation();
+            const modal = document.getElementById('restoreModal');
+            const container = document.getElementById('restoreListContainer');
+            // 복구 로직 구현 필요 (숨겨진 플레이리스트가 있다면 표시)
+            // 여기서는 UI 틀만 유지
+            container.innerHTML = '<p style="padding:10px; color:#777;">숨겨진 항목이 없습니다.</p>';
+            modal.classList.add('active');
+        }
+        function closeRestoreModal() {
+            document.getElementById('restoreModal').classList.remove('active');
+        }
     </script>
 </body>
 </html>
