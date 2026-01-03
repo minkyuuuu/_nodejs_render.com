@@ -28,10 +28,15 @@
             font-family: 'Malgun Gothic', sans-serif; 
             background: var(--bg-color); 
             color: var(--text-color); 
+            
+            /* 높이 설정: 모바일 브라우저 주소창 대응 */
             height: 100vh; /* 구형 브라우저용 Fallback */
             height: 100dvh; /* Dynamic Viewport Height */
+            
             display: flex; 
             overflow: hidden; 
+            
+            /* iPad/iPhone 노치 및 상태표시줄 안전 영역 확보 */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             padding-left: env(safe-area-inset-left);
@@ -88,8 +93,10 @@
         }
         .add-channel-box button:hover { background: #1177bb; }
 
+        /* [수정] 하단 여백 150px 확보 */
         .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
         
+        /* [수정] 드래그 관련 스타일 */
         .channel-item { cursor: grab; border-bottom: 1px solid transparent; transition: background 0.1s, border-color 0.2s; border-left: 3px solid transparent; }
         .channel-item.dragging { opacity: 0.5; background: #333; }
         .channel-item.drag-over { border-top: 2px solid var(--accent-color); }
@@ -99,6 +106,7 @@
         }
         .channel-header:hover { background: var(--item-hover); }
 
+        /* 햄버거 핸들 스타일 */
         .drag-handle { color: #555; margin-right: 10px; cursor: grab; font-size: 0.9rem; padding: 2px; }
         .drag-handle:hover { color: #999; }
 
@@ -112,6 +120,7 @@
         }
 
         .action-area { display: flex; align-items: center; gap: 10px; }
+        /* [수정] 펼치기 아이콘과 우측 버튼 사이 여백 확대 (5px -> 12px) */
         .arrow-icon { font-size: 0.8rem; color: #888; transition: transform 0.3s; margin-right: 12px; }
 
         .icon-btn { 
@@ -122,11 +131,14 @@
         }
         .btn-delete:hover { background: #444; color: var(--danger-color); }
         
+        /* 재생목록 서브 메뉴 스타일 */
         .playlist-sub-menu { display: none; background: #1e1e1e; }
         .playlist-sub-menu.active { display: block; }
         .playlist-item:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
         .playlist-item { 
-            padding: 8px 15px 8px 30px; font-size: 0.85rem; color: #aaa; 
+            /* [수정] padding-left 30px -> 57px (상위 아이콘 우측 라인에 정렬) */
+            padding: 8px 15px 8px 57px; 
+            font-size: 0.85rem; color: #aaa; 
             cursor: pointer; border-left: 3px solid transparent; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             display: block; transition: opacity 0.5s, height 0.5s; 
@@ -142,6 +154,7 @@
             flex: 1; display: flex; flex-direction: column; background: var(--bg-color); 
         }
 
+        /* [추가] 프로그레스 바 스타일 */
         #progressContainer { display: none; width: 100%; height: 4px; background: #333; position: relative; }
         #progressBar { width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s; }
 
@@ -525,9 +538,25 @@
             document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('drag-over'));
         }
 
+        // [수정] 아코디언 동작 적용
         async function togglePlaylist(element, channelId) {
             const subMenu = document.getElementById(`sub-${channelId}`);
             const arrow = element.querySelector('.arrow-icon');
+            
+            // 다른 열려있는 모든 메뉴 닫기
+            const allActiveMenus = document.querySelectorAll('.playlist-sub-menu.active');
+            allActiveMenus.forEach(menu => {
+                if (menu.id !== `sub-${channelId}`) {
+                    menu.classList.remove('active');
+                    // 해당 메뉴의 화살표도 원래대로
+                    const header = menu.previousElementSibling; 
+                    if (header) {
+                        const otherArrow = header.querySelector('.arrow-icon');
+                        if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+                    }
+                }
+            });
+
             if (subMenu.classList.toggle('active')) {
                 arrow.style.transform = 'rotate(180deg)';
                 if (!subMenu.dataset.loaded) await fetchPlaylists(channelId, subMenu);
