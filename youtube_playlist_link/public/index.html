@@ -129,7 +129,7 @@
             border-radius: 4px; transition: color 0.2s; 
         }
         .btn-delete:hover { background: #444; color: var(--danger-color); }
-        .btn-restore:hover { background: #444; color: var(--success-color); }
+        /* [삭제] 눈 아이콘 관련 스타일 삭제 */
 
         /* 재생목록 서브 메뉴 스타일 */
         .playlist-sub-menu { display: none; background: #1e1e1e; }
@@ -265,25 +265,7 @@
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; }
         .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
 
-        .restore-content { 
-            width: 500px; background: #252526; border-radius: 8px; padding: 20px; 
-            border: 1px solid #444; max-height: 80vh; display: flex; flex-direction: column; 
-        }
-        .restore-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444; 
-        }
-        .restore-list { flex: 1; overflow-y: auto; }
-        .restore-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 10px; border-bottom: 1px solid #333; 
-        }
-        .restore-item:last-child { border-bottom: none; }
-        .restore-item span { font-size: 0.9rem; color: #aaa; }
-        .btn-do-restore { 
-            padding: 4px 10px; background: #0e639c; color: white; border: none; border-radius: 4px; cursor: pointer; 
-        }
-        .btn-do-restore:hover { background: #1177bb; }
+        /* [삭제] 복구 관련 CSS 삭제 */
         
         .empty-state { text-align: center; margin-top: 100px; color: #555; }
         .empty-state i { font-size: 4rem; margin-bottom: 20px; color: #333; }
@@ -356,21 +338,13 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="restoreModal">
-        <div class="restore-content">
-            <div class="restore-header">
-                <h3><i class="fas fa-trash-restore"></i> 숨겨진 재생목록 복구</h3>
-                <button onclick="closeRestoreModal()" style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1.2rem;">×</button>
-            </div>
-            <div class="restore-list" id="restoreListContainer"></div>
-        </div>
-    </div>
+    <!-- [삭제] 복구 모달 HTML 삭제 -->
 
     <script>
         const API_SERVER_URL = '';
         
         let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
-        let hiddenPlaylists = JSON.parse(localStorage.getItem('hiddenPlaylists')) || [];
+        // [삭제] hiddenPlaylists 관련 변수 삭제
         let currentPlaylistId = null;
         let currentVideoList = [];
         let dragStartIndex;
@@ -380,7 +354,7 @@
 
         async function uploadToServer() {
             if (myChannels.length === 0) return alert('저장할 채널 목록이 없습니다.');
-            const syncData = { myChannels, hiddenPlaylists };
+            const syncData = { myChannels }; // [수정] hiddenPlaylists 제외
             try {
                 const res = await fetch(`${API_SERVER_URL}/api/sync-upload`, {
                     method: 'POST',
@@ -400,9 +374,8 @@
                 if (result.error) throw new Error(result.error);
                 
                 myChannels = result.data.myChannels || [];
-                hiddenPlaylists = result.data.hiddenPlaylists || [];
+                // [삭제] hiddenPlaylists 로드 삭제
                 localStorage.setItem('myChannels', JSON.stringify(myChannels));
-                localStorage.setItem('hiddenPlaylists', JSON.stringify(hiddenPlaylists));
                 renderChannelList();
                 alert('데이터를 성공적으로 불러왔습니다!');
             } catch (e) { alert('불러오기 실패: ' + e.message); }
@@ -491,7 +464,7 @@
                 div.ondrop = handleDrop;
                 div.ondragend = handleDragEnd;
 
-                // [수정] 햄버거 아이콘 추가
+                // [수정] 햄버거 아이콘 추가, 눈 아이콘 삭제
                 div.innerHTML = `
                     <div class="channel-header" onclick="togglePlaylist(this, '${channel.channelId}')">
                         <i class="fas fa-bars drag-handle" title="Drag to reorder"></i>
@@ -499,9 +472,6 @@
                         <span class="channel-name">${channel.title}</span>
                         <div class="action-area">
                             <i class="fas fa-chevron-down arrow-icon"></i>
-                            <button class="icon-btn btn-restore" onclick="openRestoreManager(event, '${channel.channelId}')">
-                                <i class="fas fa-eye-slash"></i>
-                            </button>
                             <button class="icon-btn btn-delete" onclick="removeChannel(event, ${index})">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -572,7 +542,8 @@
             try {
                 const response = await fetch(`${API_SERVER_URL}/api/channel-playlists?channelId=${channelId}`);
                 const data = await response.json();
-                const validPlaylists = data.playlists.filter(pl => pl.itemCount > 0 && !hiddenPlaylists.includes(pl.id));
+                // [수정] hiddenPlaylists 필터링 제거
+                const validPlaylists = data.playlists.filter(pl => pl.itemCount > 0);
                 container.innerHTML = validPlaylists.length ? validPlaylists.map(pl => `
                     <div class="playlist-item" onclick="loadVideos('${pl.id}', '${pl.title.replace(/'/g, "\\'")}', this, '${channelId}')">
                         <span class="count-badge">(${pl.itemCount})</span> ${pl.title}
@@ -648,23 +619,11 @@
         window.onclick = (e) => { 
             if(e.target.classList.contains('modal-overlay')) { 
                 if(document.getElementById('playerModal').classList.contains('active')) closePlayer();
-                document.getElementById('restoreModal').classList.remove('active'); 
+                // [삭제] 복구 모달 관련 로직 제거
             } 
         };
 
-        // 복구 모달 관련 함수 (기존 로직 유지 필요시)
-        function openRestoreManager(e, channelId) {
-            e.stopPropagation();
-            const modal = document.getElementById('restoreModal');
-            const container = document.getElementById('restoreListContainer');
-            // 복구 로직 구현 필요 (숨겨진 플레이리스트가 있다면 표시)
-            // 여기서는 UI 틀만 유지
-            container.innerHTML = '<p style="padding:10px; color:#777;">숨겨진 항목이 없습니다.</p>';
-            modal.classList.add('active');
-        }
-        function closeRestoreModal() {
-            document.getElementById('restoreModal').classList.remove('active');
-        }
+        // [삭제] openRestoreManager, closeRestoreModal 함수 제거
     </script>
 </body>
 </html>
