@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>My Playlist Library</title>
+    <title>My Playlist Library Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -23,20 +23,14 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        /* [iPad/모바일 레이아웃 대응 CSS] */
         body { 
             font-family: 'Malgun Gothic', sans-serif; 
             background: var(--bg-color); 
             color: var(--text-color); 
-            
-            /* 높이 설정: 모바일 브라우저 주소창 대응 */
-            height: 100vh; /* 구형 브라우저용 Fallback */
-            height: 100dvh; /* Dynamic Viewport Height */
-            
+            height: 100vh; 
+            height: 100dvh; 
             display: flex; 
             overflow: hidden; 
-            
-            /* iPad/iPhone 노치 및 상태표시줄 안전 영역 확보 */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             padding-left: env(safe-area-inset-left);
@@ -48,7 +42,6 @@
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: #777; }
 
-        /* 사이드바 스타일 */
         .sidebar { 
             width: var(--sidebar-width); 
             background: var(--sidebar-bg); 
@@ -91,12 +84,9 @@
             padding: 8px 12px; background: #0e639c; border: none; 
             color: white; border-radius: 4px; cursor: pointer; 
         }
-        .add-channel-box button:hover { background: #1177bb; }
 
-        /* [수정] 하단 여백 150px 확보 */
         .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
         
-        /* [수정] 드래그 관련 스타일 */
         .channel-item { cursor: grab; border-bottom: 1px solid transparent; transition: background 0.1s, border-color 0.2s; border-left: 3px solid transparent; }
         .channel-item.dragging { opacity: 0.5; background: #333; }
         .channel-item.drag-over { border-top: 2px solid var(--accent-color); }
@@ -106,7 +96,6 @@
         }
         .channel-header:hover { background: var(--item-hover); }
 
-        /* 햄버거 핸들 스타일 */
         .drag-handle { color: #555; margin-right: 10px; cursor: grab; font-size: 0.9rem; padding: 2px; }
         .drag-handle:hover { color: #999; }
 
@@ -120,7 +109,6 @@
         }
 
         .action-area { display: flex; align-items: center; gap: 10px; }
-        /* [수정] 펼치기 아이콘과 우측 버튼 사이 여백 확대 (5px -> 12px) */
         .arrow-icon { font-size: 0.8rem; color: #888; transition: transform 0.3s; margin-right: 12px; }
 
         .icon-btn { 
@@ -131,17 +119,15 @@
         }
         .btn-delete:hover { background: #444; color: var(--danger-color); }
         
-        /* 재생목록 서브 메뉴 스타일 */
         .playlist-sub-menu { display: none; background: #1e1e1e; }
         .playlist-sub-menu.active { display: block; }
         .playlist-item:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
         .playlist-item { 
-            /* [수정] padding-left 57px -> 40px (상위 아이콘 좌측 라인에 정렬) */
             padding: 8px 15px 8px 40px; 
             font-size: 0.85rem; color: #aaa; 
             cursor: pointer; border-left: 3px solid transparent; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-            display: block; transition: opacity 0.5s, height 0.5s; 
+            display: block; transition: all 0.2s; 
         }
         .playlist-item:hover { background: var(--item-hover); color: var(--text-highlight); }
         .playlist-item.selected { 
@@ -149,27 +135,23 @@
         }
         .count-badge { font-family: 'Consolas', monospace; color: #888; margin-right: 2px; }
 
-        /* 메인 컨텐츠 */
         .main-content { 
             flex: 1; display: flex; flex-direction: column; background: var(--bg-color); 
         }
 
-        /* [추가] 프로그레스 바 스타일 */
         #progressContainer { display: none; width: 100%; height: 4px; background: #333; position: relative; }
         #progressBar { width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s; }
 
-        /* [수정] 2단 헤더 스타일 */
         .main-header { 
             padding: 15px 30px; 
             background: var(--bg-color); 
             border-bottom: 1px solid var(--border-color); 
             display: flex; 
-            flex-direction: column; /* 세로 정렬 */
+            flex-direction: column; 
             gap: 10px;
             min-height: 80px;
         }
 
-        /* 1행: 타이틀 + 닫기 버튼 */
         .header-row-top {
             display: flex;
             justify-content: space-between;
@@ -182,12 +164,11 @@
             font-weight: normal; 
             margin: 0; 
             line-height: 1.3;
-            word-break: keep-all; /* 긴 타이틀 줄바꿈 처리 */
+            word-break: keep-all; 
             flex: 1;
             margin-right: 20px;
         }
 
-        /* 2행: URL 정보 + 액션 버튼들 */
         .header-row-bottom {
             display: flex;
             justify-content: space-between;
@@ -206,7 +187,7 @@
         }
 
         .header-actions { 
-            display: none; /* 기본 숨김, 선택 시 표시 */
+            display: none; 
             gap: 8px; 
             align-items: center; 
         } 
@@ -330,13 +311,11 @@
         <div id="progressContainer"><div id="progressBar"></div></div>
 
         <div class="main-header">
-            <!-- [수정] 1행: 타이틀 및 X 아이콘 -->
             <div class="header-row-top">
                 <h1 id="currentPlaylistTitle">Select Playlist</h1>
                 <i class="fas fa-times" id="mainClearBtn" style="display:none; cursor:pointer; color:#666;" onclick="location.reload()" title="화면 비우기"></i>
             </div>
             
-            <!-- [수정] 2행: URL 정보 및 액션 버튼들 -->
             <div class="header-row-bottom">
                 <div id="channelUrl" class="channel-url-info"></div>
                 
@@ -373,16 +352,15 @@
     <script>
         const API_SERVER_URL = '';
         
+        // 로컬 스토리지 키 값 (동영상 앱과 충돌 방지를 위해 별도 관리 권장하나 기존 코드 유지)
         let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
         let currentPlaylistId = null;
-        let currentPlaylistTitle = ''; // 재로딩을 위한 타이틀 저장
-        let currentChannelId = null; // 재로딩을 위한 채널ID 저장
+        let currentPlaylistTitle = ''; 
+        let currentChannelId = null; 
         let currentVideoList = [];
         let loadingPlaylistId = null; 
-        let dragStartIndex;
         let dragSrcEl = null;
         
-        // [추가] 동영상 목록 앱 기능 변수
         let currentSort = 'asc';
         let copyIndex = 0;
 
@@ -410,18 +388,9 @@
                 if (result.error) throw new Error(result.error);
                 
                 myChannels = result.data.myChannels || [];
-                localStorage.setItem('myChannels', JSON.stringify(myChannels));
-                renderChannelList();
+                saveAndRender();
                 alert('데이터를 성공적으로 불러왔습니다!');
             } catch (e) { alert('불러오기 실패: ' + e.message); }
-        }
-
-        function extractHandle(input) {
-            try { input = decodeURIComponent(input); } catch (e) {}
-            if (input.startsWith('@')) return input;
-            const match = input.match(/@([^/?&]+)/);
-            if (match) return '@' + match[1];
-            return input;
         }
 
         document.getElementById('addChannelBtn').addEventListener('click', async () => {
@@ -430,7 +399,6 @@
             if (!rawInput) return;
 
             let handle = '';
-            const videoMatch = rawInput.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/);
             const handleMatch = rawInput.match(/(@[^\/\s?]+)/);
             const channelIdMatch = rawInput.match(/(?:channel\/|^)(UC[\w-]{21}[AQgw])/);
 
@@ -438,11 +406,8 @@
                 handle = handleMatch[1];
             } else if (channelIdMatch) {
                 handle = channelIdMatch[1]; 
-            } else if (videoMatch) {
-                alert("이 앱은 현재 동영상 주소로 채널 추가를 지원하지 않습니다.\n핸들(@)이나 채널 ID를 입력해주세요.");
-                return;
             } else {
-                alert("입력하신 정보가 올바른 유튜브 주소 형식이 아닙니다.\n채널 URL, 핸들(@), 또는 채널 ID를 정확히 입력해주세요.");
+                alert("채널 URL, 핸들(@), 또는 채널 ID를 정확히 입력해주세요.");
                 return;
             }
 
@@ -460,7 +425,8 @@
                     return;
                 }
 
-                myChannels.push({ ...channelData, handle });
+                // 초기 플레이리스트 배열 추가
+                myChannels.push({ ...channelData, handle, playlists: [] });
                 saveAndRender();
                 inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
             } catch (error) {
@@ -507,19 +473,11 @@
         function handleDragStart(e) {
             dragSrcEl = e.currentTarget;
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
             e.currentTarget.classList.add('dragging');
         }
-
-        function handleDragOver(e) {
-            if (e.preventDefault) e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            return false;
-        }
-
+        function handleDragOver(e) { if (e.preventDefault) e.preventDefault(); return false; }
         function handleDragEnter(e) { e.currentTarget.classList.add('drag-over'); }
         function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
-
         function handleDrop(e) {
             if (e.stopPropagation) e.stopPropagation();
             const target = e.currentTarget;
@@ -532,34 +490,33 @@
             }
             return false;
         }
-
         function handleDragEnd(e) {
             e.currentTarget.classList.remove('dragging');
             document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('drag-over'));
         }
 
-        // [수정] 아코디언 동작 적용
         async function togglePlaylist(element, channelId) {
             const subMenu = document.getElementById(`sub-${channelId}`);
             const arrow = element.querySelector('.arrow-icon');
             
-            // 다른 열려있는 모든 메뉴 닫기
-            const allActiveMenus = document.querySelectorAll('.playlist-sub-menu.active');
-            allActiveMenus.forEach(menu => {
+            // 아코디언 동작
+            document.querySelectorAll('.playlist-sub-menu.active').forEach(menu => {
                 if (menu.id !== `sub-${channelId}`) {
                     menu.classList.remove('active');
-                    // 해당 메뉴의 화살표도 원래대로
                     const header = menu.previousElementSibling; 
-                    if (header) {
-                        const otherArrow = header.querySelector('.arrow-icon');
-                        if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
-                    }
+                    if (header) header.querySelector('.arrow-icon').style.transform = 'rotate(0deg)';
                 }
             });
 
             if (subMenu.classList.toggle('active')) {
                 arrow.style.transform = 'rotate(180deg)';
-                if (!subMenu.dataset.loaded) await fetchPlaylists(channelId, subMenu);
+                // 저장된 재생목록이 없거나 비어있으면 호출
+                const channel = myChannels.find(c => c.channelId === channelId);
+                if (!channel.playlists || channel.playlists.length === 0) {
+                    await fetchPlaylists(channelId, subMenu);
+                } else {
+                    renderPlaylistItems(channel.playlists, subMenu, channelId);
+                }
             } else {
                 arrow.style.transform = 'rotate(0deg)';
             }
@@ -567,18 +524,29 @@
 
         async function fetchPlaylists(channelId, container) {
             try {
+                container.innerHTML = '<div style="padding:10px; font-size:0.8rem; color:#666;">재생목록 로딩 중...</div>';
                 const response = await fetch(`${API_SERVER_URL}/api/channel-playlists?channelId=${channelId}`);
                 const data = await response.json();
                 const validPlaylists = data.playlists.filter(pl => pl.itemCount > 0);
-                container.innerHTML = validPlaylists.length ? validPlaylists.map(pl => `
-                    <div class="playlist-item" onclick="loadVideos('${pl.id}', '${pl.title.replace(/'/g, "\\'")}', this, '${channelId}')">
-                        <span class="count-badge">(${pl.itemCount})</span> ${pl.title}
-                    </div>`).join('') : '<div style="padding:10px;">No Playlists</div>';
-                container.dataset.loaded = "true";
+                
+                // 데이터 저장
+                const channel = myChannels.find(c => c.channelId === channelId);
+                channel.playlists = validPlaylists.map(pl => ({...pl, videos: []})); // 영상 저장용 공간 확보
+                saveToStorage();
+
+                renderPlaylistItems(channel.playlists, container, channelId);
             } catch (e) { container.innerHTML = 'Error'; }
         }
 
-        async function loadVideos(playlistId, playlistTitle, element, channelId) {
+        function renderPlaylistItems(playlists, container, channelId) {
+            container.innerHTML = playlists.length ? playlists.map(pl => `
+                <div class="playlist-item ${currentPlaylistId === pl.id ? 'selected' : ''}" 
+                     onclick="loadVideos('${pl.id}', '${pl.title.replace(/'/g, "\\'")}', this, '${channelId}')">
+                    <span class="count-badge">(${pl.itemCount})</span> ${pl.title}
+                </div>`).join('') : '<div style="padding:10px;">No Playlists</div>';
+        }
+
+        async function loadVideos(playlistId, playlistTitle, element, channelId, forceRefresh = false) {
             document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('selected'));
             if(element) element.classList.add('selected');
             
@@ -586,14 +554,14 @@
             currentPlaylistTitle = playlistTitle;
             currentChannelId = channelId;
             loadingPlaylistId = playlistId; 
-            
-            // [추가] 초기화
             copyIndex = 0;
             currentSort = 'asc';
 
             document.getElementById('currentPlaylistTitle').textContent = playlistTitle;
             
             const channel = myChannels.find(ch => ch.channelId === channelId);
+            const playlist = channel.playlists.find(p => p.id === playlistId);
+
             if (channel) {
                 const channelUrlDiv = document.getElementById('channelUrl');
                 const handleText = (channel.handle ? `https://www.youtube.com/${channel.handle}` : `https://www.youtube.com/channel/${channelId}`);
@@ -603,20 +571,25 @@
             document.getElementById('headerActions').style.display = 'flex';
             document.getElementById('mainClearBtn').style.display = 'inline';
             
+            // [저장된 데이터 확인] 강제 업데이트가 아니고 데이터가 있으면 즉시 렌더링
+            if (!forceRefresh && playlist.videos && playlist.videos.length > 0) {
+                currentVideoList = playlist.videos;
+                applySortAndRender();
+                return;
+            }
+
+            // API 호출 시작
             const container = document.getElementById('videoListContainer');
             container.innerHTML = '<div class="empty-state"><div class="spinner"></div><p id="pText">데이터를 불러오는 중...</p></div>';
             currentVideoList = []; 
-            updateCopyButtonLabel(); // 초기화된 버튼 상태 반영
+            updateCopyButtonLabel();
 
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');
-            const pText = document.getElementById('pText');
-            
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
             let nextPageToken = '';
-            
             try {
                 while (nextPageToken !== null) {
                     if (loadingPlaylistId !== playlistId) return; 
@@ -624,34 +597,27 @@
                     const url = `${API_SERVER_URL}/api/playlist/${playlistId}?pageToken=${nextPageToken}`;
                     const response = await fetch(url);
                     const data = await response.json();
-                    
                     if (data.error) throw new Error(data.error);
 
-                    if (data.videos && data.videos.length > 0) {
-                        currentVideoList = currentVideoList.concat(data.videos);
-                    }
-                    
+                    if (data.videos) currentVideoList = currentVideoList.concat(data.videos);
                     nextPageToken = data.nextPageToken || null; 
 
                     const totalCount = data.totalCount || 0;
                     const percent = totalCount > 0 ? Math.round((currentVideoList.length / totalCount) * 100) : 0;
-                    
                     progressBar.style.width = `${Math.min(percent, 100)}%`;
+                    const pText = document.getElementById('pText');
                     if(pText) pText.innerText = `로드 중... (${currentVideoList.length} / ${totalCount}) - ${Math.min(percent, 100)}%`;
-                    
-                    updateCopyButtonLabel(); // 로딩 중에도 복사 버튼 업데이트
+                    updateCopyButtonLabel();
                 }
 
                 if (loadingPlaylistId !== playlistId) return;
 
-                // [추가] 로딩 완료 후 정렬 및 렌더링 호출
-                applySortAndRender();
+                // [데이터 저장] 불러온 영상 목록을 로컬 스토리지에 저장
+                playlist.videos = currentVideoList;
+                saveToStorage();
 
-                setTimeout(() => {
-                    if (loadingPlaylistId === playlistId) {
-                        progressContainer.style.display = 'none';
-                    }
-                }, 500);
+                applySortAndRender();
+                setTimeout(() => { progressContainer.style.display = 'none'; }, 500);
 
             } catch (e) { 
                 if (loadingPlaylistId === playlistId) {
@@ -661,12 +627,10 @@
             }
         }
 
-        // [추가] 동영상 목록 앱 기능 함수들
         function refreshCurrentPlaylist() {
             if (currentPlaylistId && currentChannelId) {
-                // 현재 선택된 요소 찾기 (스타일 유지를 위해)
                 const selectedEl = document.querySelector('.playlist-item.selected');
-                loadVideos(currentPlaylistId, currentPlaylistTitle, selectedEl, currentChannelId);
+                loadVideos(currentPlaylistId, currentPlaylistTitle, selectedEl, currentChannelId, true);
             }
         }
 
@@ -706,12 +670,9 @@
 
         function applySortAndRender() {
             if (!currentVideoList.length) return;
-            
-            // 정렬 버튼 스타일 업데이트
             document.getElementById('sortAsc').classList.toggle('active', currentSort === 'asc');
             document.getElementById('sortDesc').classList.toggle('active', currentSort === 'desc');
             
-            // 데이터 정렬
             currentVideoList.sort((a, b) => {
                 const dateA = new Date(a.publishedAt);
                 const dateB = new Date(b.publishedAt);
@@ -719,14 +680,8 @@
             });
             
             updateCopyButtonLabel();
-            
             const container = document.getElementById('videoListContainer');
             const totalCount = currentVideoList.length;
-
-            if (totalCount === 0) {
-                container.innerHTML = '<div class="empty-state"><p>동영상이 없습니다.</p></div>';
-                return;
-            }
 
             container.innerHTML = currentVideoList.map((v, index) => `
                 <div class="video-card" onclick="openPlayer('${v.id}')">
@@ -741,8 +696,9 @@
                 </div>`).join('');
         }
 
-        function saveAndRender() { localStorage.setItem('myChannels', JSON.stringify(myChannels)); renderChannelList(); }
-        function removeChannel(e, index) { e.stopPropagation(); if(confirm('삭제?')) { myChannels.splice(index, 1); saveAndRender(); } }
+        function saveToStorage() { localStorage.setItem('myChannels', JSON.stringify(myChannels)); }
+        function saveAndRender() { saveToStorage(); renderChannelList(); }
+        function removeChannel(e, index) { e.stopPropagation(); if(confirm('채널을 삭제하시겠습니까?')) { myChannels.splice(index, 1); saveAndRender(); } }
         function openPlayer(videoId) { 
             document.getElementById('playerModal').classList.add('active'); 
             document.getElementById('youtubePlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`; 
@@ -751,7 +707,6 @@
             document.getElementById('playerModal').classList.remove('active'); 
             document.getElementById('youtubePlayer').src = ""; 
         }
-        // [수정] playFirstVideo 함수 삭제됨 (모달 버튼 제거로 인해 불필요)
         function openInNewTab() { if(currentPlaylistId) window.open(`https://www.youtube.com/playlist?list=${currentPlaylistId}`, '_blank'); }
         
         function formatDuration(iso) { 
@@ -773,9 +728,7 @@
         }
 
         window.onclick = (e) => { 
-            if(e.target.classList.contains('modal-overlay')) { 
-                if(document.getElementById('playerModal').classList.contains('active')) closePlayer();
-            } 
+            if(e.target.classList.contains('modal-overlay')) closePlayer();
         };
     </script>
 </body>
