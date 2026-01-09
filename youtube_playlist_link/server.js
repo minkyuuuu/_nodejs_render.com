@@ -42,30 +42,68 @@ app.get('/api/sync-download', (req, res) => {
     res.json({ data: playlistCloudData });
 });
 
-// 1. 유튜버 핸들(ID)로 채널 정보 찾기
+// [수정됨] 1. 유튜버 핸들(ID)로 채널 정보 찾기 (정확도 개선)
 app.get('/api/find-channel', async (req, res) => {
-    const { handle } = req.query;
+    let { handle } = req.query;
     if (!handle) return res.status(400).json({ error: 'Handle is required' });
 
     try {
-        const response = await youtube.search.list({
-            part: 'snippet',
-            type: 'channel',
-            q: handle,
-            maxResults: 1,
-        });
-
-        if (response.data.items.length === 0) {
-            return res.status(404).json({ error: 'Channel not found' });
+        let response;
+        
+        // 입력값이 채널 ID 형태(UC로 시작)인지 핸들(@로 시작)인지 구분
+        if (handle.startsWith('UC')) {
+            // A. 채널 ID로 검색 (channels.list 사용)
+            response = await youtube.channels.list({
+                part: 'snippet',
+                id: handle,
+                maxResults: 1,
+            });
+        } else {
+            // B. 핸들로 검색 (channels.list의 forHandle 사용) -> 이게 핵심입니다!
+            // 핸들에 @가 없으면 붙여줌
+            if (!handle.startsWith('@')) handle = '@' + handle;
+            
+            response = await youtube.channels.list({
+                part: 'snippet',
+                forHandle: handle, // 정확한 핸들 일치 검색
+                maxResults: 1,
+            });
         }
 
+        if (!response.data.items || response.data.items.length === 0) {
+            // 검색 결과가 없으면 기존 방식(search.list)으로 한 번 더 시도 (백업 로직)
+            // (핸들이 아니라 일반 검색어일 경우를 대비)
+            const searchResponse = await youtube.search.list({
+                 part: 'snippet',
+                 type: 'channel',
+                 q: handle,
+                 maxResults: 1,
+            });
+             
+            if (searchResponse.data.items.length === 0) {
+                return res.status(404).json({ error: 'Channel not found' });
+            }
+            
+            // 검색 결과 사용
+            const searchChannel = searchResponse.data.items[0];
+            return res.json({
+                channelId: searchChannel.snippet.channelId,
+                title: searchChannel.snippet.channelTitle,
+                thumbnail: searchChannel.snippet.thumbnails.default.url,
+                description: searchChannel.snippet.description
+            });
+        }
+
+        // channels.list 결과 사용 (정확도 100%)
         const channel = response.data.items[0];
         res.json({
-            channelId: channel.snippet.channelId,
-            title: channel.snippet.channelTitle,
+            channelId: channel.id, // channels.list는 id가 최상위에 있음
+            title: channel.snippet.title,
             thumbnail: channel.snippet.thumbnails.default.url,
-            description: channel.snippet.description
+            description: channel.snippet.description,
+            handle: channel.snippet.customUrl // 실제 핸들 정보
         });
+
     } catch (error) {
         console.error('[YouTube API Error]:', error.message);
         res.status(500).json({ error: 'Failed to search channel (Server Error)' });
@@ -103,13 +141,11 @@ app.get('/api/channel-playlists', async (req, res) => {
 });
 
 // 3. 특정 재생목록의 동영상 리스트 가져오기 (페이지네이션 적용)
-// [수정] 한 번에 다 가져오지 않고 50개씩 끊어서 반환하도록 변경
 app.get('/api/playlist/:playlistId', async (req, res) => {
   const { playlistId } = req.params;
-  const { pageToken } = req.query; // 클라이언트에서 요청한 페이지 토큰
+  const { pageToken } = req.query;
 
   try {
-    // 1. 재생목록의 아이템들을 50개 단위로 가져옵니다.
     const playlistItemsResponse = await youtube.playlistItems.list({
       part: 'snippet,contentDetails',
       playlistId: playlistId,
@@ -129,10 +165,8 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
         });
     }
 
-    // 2. videoId만 추출
     const videoIds = items.map(item => item.contentDetails?.videoId).filter(id => id);
 
-    // 3. 비디오 상세 정보(duration 등) 조회
     let videos = [];
     if (videoIds.length > 0) {
         const videoDetailsResponse = await youtube.videos.list({
@@ -140,13 +174,11 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
             id: videoIds.join(','),
         });
 
-        // ID 매핑을 위한 Map 생성
         const detailsMap = new Map();
         videoDetailsResponse.data.items.forEach(v => {
             detailsMap.set(v.id, v);
         });
 
-        // 4. playlistItems 순서대로 데이터 병합
         videos = videoIds.map(id => {
             const detail = detailsMap.get(id);
             if (!detail) return null;
@@ -157,7 +189,7 @@ app.get('/api/playlist/:playlistId', async (req, res) => {
                 publishedAt: detail.snippet.publishedAt,
                 duration: detail.contentDetails.duration,
             };
-        }).filter(v => v); // null 제거
+        }).filter(v => v); 
     }
 
     res.json({ 

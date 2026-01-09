@@ -352,6 +352,7 @@
     <script>
         const API_SERVER_URL = '';
         
+        // 로컬 스토리지 키 값 (동영상 앱과 충돌 방지를 위해 별도 관리 권장하나 기존 코드 유지)
         let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
         let currentPlaylistId = null;
         let currentPlaylistTitle = ''; 
@@ -392,30 +393,60 @@
             } catch (e) { alert('불러오기 실패: ' + e.message); }
         }
 
+        // [핵심 수정] URL 파싱 및 핸들 추출 로직 강화
         document.getElementById('addChannelBtn').addEventListener('click', async () => {
             const inputElement = document.getElementById('channelInput');
             const rawInput = inputElement.value.trim();
             if (!rawInput) return;
 
             let handle = '';
-            // [수정] 정확한 핸들 추출 로직 (하이픈, 점 포함 / 뒤에오는 경로는 제외) - 동영상 앱과 동일 적용
-            const handleMatch = rawInput.match(/@([\w.-]+)/);
-            const channelIdMatch = rawInput.match(/(?:channel\/|^)(UC[\w-]{21}[AQgw])/);
+            let channelId = '';
 
-            if (handleMatch) {
-                handle = "@" + handleMatch[1];
-            } else if (channelIdMatch) {
-                handle = channelIdMatch[1]; 
-            } else {
+            // 1. URL 객체로 변환 시도 (URL 뒤의 /playlists, /featured 등을 확실히 제거하기 위함)
+            try {
+                const urlObj = new URL(rawInput);
+                // 경로에서 @로 시작하는 세그먼트 찾기 (예: /@coin-rich/playlists -> @coin-rich)
+                const pathSegments = urlObj.pathname.split('/');
+                const handleSegment = pathSegments.find(s => s.startsWith('@'));
+                if (handleSegment) {
+                    handle = handleSegment;
+                }
+            } catch (e) {
+                // URL 형식이 아니면 기존 정규식 방식으로 시도
+            }
+
+            // 2. URL 객체 파싱 실패 시 또는 직접 입력 시 정규식 사용
+            if (!handle) {
+                const handleMatch = rawInput.match(/(@[\w.-]+)/); // @뒤에 문자, 숫자, 점, 하이픈 허용
+                if (handleMatch) {
+                    handle = handleMatch[1];
+                }
+            }
+
+            // 3. 채널 ID (UC...) 매칭 시도
+            const channelIdMatch = rawInput.match(/(?:channel\/|^)(UC[\w-]{21}[AQgw])/);
+            if (channelIdMatch) {
+                channelId = channelIdMatch[1];
+            }
+
+            if (!handle && !channelId) {
                 alert("채널 URL, 핸들(@), 또는 채널 ID를 정확히 입력해주세요.");
                 return;
             }
 
-            if (myChannels.some(ch => ch.handle === handle || ch.channelId === handle)) return alert('이미 추가된 채널입니다.');
+            // [디버깅용] 추출된 핸들 확인 (문제가 해결되면 이 alert는 주석 처리하세요)
+            // alert(`Extracted Handle: ${handle || channelId}`);
+
+            const queryParam = handle ? `handle=${encodeURIComponent(handle)}` : `handle=${encodeURIComponent(channelId)}`;
+
+            // 중복 체크
+            if (myChannels.some(ch => (handle && ch.handle === handle) || (channelId && ch.channelId === channelId))) {
+                return alert('이미 추가된 채널입니다.');
+            }
 
             try {
                 inputElement.placeholder = "Searching...";
-                const response = await fetch(`${API_SERVER_URL}/api/find-channel?handle=${encodeURIComponent(handle)}`);
+                const response = await fetch(`${API_SERVER_URL}/api/find-channel?${queryParam}`);
                 const channelData = await response.json();
                 if (!response.ok) throw new Error(channelData.error || '채널 없음');
                 
@@ -425,7 +456,8 @@
                     return;
                 }
 
-                myChannels.push({ ...channelData, handle, playlists: [] });
+                // 초기 플레이리스트 배열 추가
+                myChannels.push({ ...channelData, handle: handle || channelData.handle, playlists: [] });
                 saveAndRender();
                 inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
             } catch (error) {
@@ -468,6 +500,7 @@
             });
         }
 
+        // 드래그 앤 드롭 핸들러
         function handleDragStart(e) {
             dragSrcEl = e.currentTarget;
             e.dataTransfer.effectAllowed = 'move';
@@ -497,6 +530,7 @@
             const subMenu = document.getElementById(`sub-${channelId}`);
             const arrow = element.querySelector('.arrow-icon');
             
+            // 아코디언 동작
             document.querySelectorAll('.playlist-sub-menu.active').forEach(menu => {
                 if (menu.id !== `sub-${channelId}`) {
                     menu.classList.remove('active');
@@ -507,6 +541,7 @@
 
             if (subMenu.classList.toggle('active')) {
                 arrow.style.transform = 'rotate(180deg)';
+                // 저장된 재생목록이 없거나 비어있으면 호출
                 const channel = myChannels.find(c => c.channelId === channelId);
                 if (!channel.playlists || channel.playlists.length === 0) {
                     await fetchPlaylists(channelId, subMenu);
@@ -525,8 +560,9 @@
                 const data = await response.json();
                 const validPlaylists = data.playlists.filter(pl => pl.itemCount > 0);
                 
+                // 데이터 저장
                 const channel = myChannels.find(c => c.channelId === channelId);
-                channel.playlists = validPlaylists.map(pl => ({...pl, videos: []})); 
+                channel.playlists = validPlaylists.map(pl => ({...pl, videos: []})); // 영상 저장용 공간 확보
                 saveToStorage();
 
                 renderPlaylistItems(channel.playlists, container, channelId);
@@ -566,12 +602,14 @@
             document.getElementById('headerActions').style.display = 'flex';
             document.getElementById('mainClearBtn').style.display = 'inline';
             
+            // [저장된 데이터 확인] 강제 업데이트가 아니고 데이터가 있으면 즉시 렌더링
             if (!forceRefresh && playlist.videos && playlist.videos.length > 0) {
                 currentVideoList = playlist.videos;
                 applySortAndRender();
                 return;
             }
 
+            // API 호출 시작
             const container = document.getElementById('videoListContainer');
             container.innerHTML = '<div class="empty-state"><div class="spinner"></div><p id="pText">데이터를 불러오는 중...</p></div>';
             currentVideoList = []; 
@@ -605,6 +643,7 @@
 
                 if (loadingPlaylistId !== playlistId) return;
 
+                // [데이터 저장] 불러온 영상 목록을 로컬 스토리지에 저장
                 playlist.videos = currentVideoList;
                 saveToStorage();
 
