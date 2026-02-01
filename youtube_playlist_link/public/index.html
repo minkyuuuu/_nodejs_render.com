@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>My Playlist Library Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
         :root {
             --bg-color: #1e1e1e;           
@@ -42,7 +43,6 @@
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: #777; }
 
-        /* 사이드바 트랜지션 및 숨김 처리 */
         .sidebar { 
             width: var(--sidebar-width); 
             background: var(--sidebar-bg); 
@@ -57,7 +57,6 @@
             white-space: nowrap;
         }
 
-        /* 사이드바가 접혔을 때 */
         .sidebar.collapsed {
             width: 0;
             min-width: 0;
@@ -98,30 +97,39 @@
 
         .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
         
-        /* 드래그 앤 드롭 스타일 수정 */
         .channel-item { 
             border-bottom: 1px solid transparent; 
             transition: background 0.1s, border-color 0.2s; 
             border-left: 3px solid transparent; 
+            background: var(--sidebar-bg); /* 드래그 시 배경 유지 */
         }
-        .channel-item.dragging { opacity: 0.5; background: #333; }
-        .channel-item.drag-over { border-top: 2px solid var(--accent-color); }
+        
+        /* SortableJS가 드래그 중인 아이템에 부여하는 클래스 */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #333;
+            border: 1px dashed #666;
+        }
+        .sortable-drag {
+            background: var(--item-active);
+            opacity: 1;
+        }
 
         .channel-header { 
             display: flex; align-items: center; padding: 12px 15px; transition: background 0.1s; 
-            cursor: default; /* 기본 커서 */
+            cursor: default; 
         }
         .channel-header:hover { background: var(--item-hover); }
 
-        /* 드래그 핸들 아이콘 스타일 강화 */
         .drag-handle { 
-            color: #555; 
-            margin-right: 10px; 
-            cursor: grab; /* 손바닥 모양 */
+            color: #666; 
+            margin-right: 12px; 
+            cursor: grab; 
             font-size: 1.1rem; 
-            padding: 5px 8px; /* 클릭 영역 확보 */
+            padding: 4px 6px; 
+            transition: color 0.2s;
         }
-        .drag-handle:hover { color: #ccc; background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .drag-handle:hover { color: var(--accent-color); background: rgba(255,255,255,0.05); border-radius: 4px; }
         .drag-handle:active { cursor: grabbing; }
 
         .channel-icon { 
@@ -192,7 +200,6 @@
             margin-right: 20px;
         }
 
-        /* 사이드바 토글 버튼 */
         .toggle-sidebar-btn {
             background: none;
             border: none;
@@ -413,14 +420,18 @@
         let currentChannelId = null; 
         let currentVideoList = [];
         let loadingPlaylistId = null; 
-        let dragSrcEl = null;
         
+        // SortableJS 인스턴스를 저장할 변수
+        let sortableInstance = null;
+
         let currentSort = 'asc';
         let copyIndex = 0;
 
-        window.addEventListener('load', () => { renderChannelList(); });
+        window.addEventListener('load', () => { 
+            renderChannelList(); 
+            initSortable(); // 로드 시 Sortable 초기화
+        });
 
-        // 사이드바 토글
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('collapsed');
@@ -514,27 +525,38 @@
             }
         });
 
-        // [중요] 채널 리스트 렌더링 및 드래그 이벤트 설정
+        // [중요] SortableJS 초기화 함수
+        function initSortable() {
+            const el = document.getElementById('channelListWrapper');
+            if(sortableInstance) sortableInstance.destroy(); // 기존 인스턴스가 있다면 제거
+
+            sortableInstance = new Sortable(el, {
+                animation: 150, // 부드러운 이동 효과 (ms)
+                handle: ".drag-handle", // [핵심] 이 클래스를 가진 요소만 드래그 가능
+                ghostClass: "sortable-ghost", // 드래그 중인 자리에 생기는 잔상 스타일
+                dragClass: "sortable-drag", // 드래그 중인 아이템 스타일
+                onEnd: function (evt) {
+                    // 드래그가 끝났을 때 배열 데이터 순서 변경
+                    const item = myChannels.splice(evt.oldIndex, 1)[0];
+                    myChannels.splice(evt.newIndex, 0, item);
+                    saveToStorage(); // 데이터만 저장 (화면은 이미 Sortable이 바꿨으므로 다시 렌더링 X)
+                }
+            });
+        }
+
+        // [수정] 복잡한 네이티브 드래그 코드를 제거하고 단순하게 HTML 생성
         function renderChannelList() {
             const wrapper = document.getElementById('channelListWrapper');
             wrapper.innerHTML = '';
             myChannels.forEach((channel, index) => {
                 const div = document.createElement('div');
                 div.className = 'channel-item';
-                // 기본적으로 드래그 불가능 (핸들을 잡을 때만 활성화)
-                div.setAttribute('draggable', 'false'); 
-                div.setAttribute('data-index', index); 
-                
-                div.ondragstart = handleDragStart;
-                div.ondragover = handleDragOver;
-                div.ondragenter = handleDragEnter;
-                div.ondragleave = handleDragLeave;
-                div.ondrop = handleDrop;
-                div.ondragend = handleDragEnd;
+                // data-index는 Sortable이 내부적으로 처리하지만 참조용으로 남김
+                div.setAttribute('data-id', channel.channelId); 
 
                 div.innerHTML = `
                     <div class="channel-header" onclick="togglePlaylist(this, '${channel.channelId}')">
-                        <i class="fas fa-bars drag-handle" title="Drag handle" onmousedown="enableDrag(event)"></i>
+                        <i class="fas fa-bars drag-handle" title="Move"></i>
                         <img src="${channel.thumbnail}" class="channel-icon" alt="">
                         <span class="channel-name">${channel.title}</span>
                         <div class="action-area">
@@ -547,65 +569,6 @@
                     <div class="playlist-sub-menu" id="sub-${channel.channelId}"></div>
                 `;
                 wrapper.appendChild(div);
-            });
-        }
-
-        // 핸들 클릭 시 부모 요소 드래그 허용
-        function enableDrag(e) {
-            const item = e.target.closest('.channel-item');
-            if (item) {
-                item.setAttribute('draggable', 'true');
-            }
-        }
-
-        function handleDragStart(e) {
-            dragSrcEl = e.currentTarget;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
-            setTimeout(() => {
-                e.currentTarget.classList.add('dragging');
-            }, 0);
-        }
-
-        function handleDragOver(e) { 
-            if (e.preventDefault) e.preventDefault(); 
-            e.dataTransfer.dropEffect = 'move';
-            return false; 
-        }
-
-        function handleDragEnter(e) { 
-            const targetItem = e.target.closest('.channel-item');
-            if (targetItem && targetItem !== dragSrcEl) {
-                targetItem.classList.add('drag-over');
-            }
-        }
-
-        function handleDragLeave(e) { 
-            const targetItem = e.target.closest('.channel-item');
-            if (targetItem && e.relatedTarget && !targetItem.contains(e.relatedTarget)) {
-                targetItem.classList.remove('drag-over');
-            }
-        }
-
-        function handleDrop(e) {
-            if (e.stopPropagation) e.stopPropagation();
-            const target = e.target.closest('.channel-item');
-
-            if (dragSrcEl && target && dragSrcEl !== target) {
-                const oldIndex = parseInt(dragSrcEl.getAttribute('data-index'));
-                const newIndex = parseInt(target.getAttribute('data-index'));
-                const item = myChannels.splice(oldIndex, 1)[0];
-                myChannels.splice(newIndex, 0, item);
-                saveAndRender();
-            }
-            return false;
-        }
-
-        function handleDragEnd(e) {
-            e.currentTarget.classList.remove('dragging');
-            document.querySelectorAll('.channel-item').forEach(item => {
-                item.classList.remove('drag-over');
-                item.setAttribute('draggable', 'false'); // 드래그 종료 시 다시 잠금
             });
         }
 
