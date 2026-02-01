@@ -42,7 +42,7 @@
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: #777; }
 
-        /* [수정됨] 사이드바 트랜지션 및 숨김 처리 추가 */
+        /* 사이드바 트랜지션 및 숨김 처리 */
         .sidebar { 
             width: var(--sidebar-width); 
             background: var(--sidebar-bg); 
@@ -52,13 +52,12 @@
             flex-shrink: 0; 
             height: 100%;
             user-select: none;
-            /* 애니메이션 효과 */
             transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
-            overflow: hidden; /* 내용물이 넘치지 않게 숨김 */
-            white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+            overflow: hidden;
+            white-space: nowrap;
         }
 
-        /* [추가됨] 사이드바가 접혔을 때 스타일 */
+        /* 사이드바가 접혔을 때 */
         .sidebar.collapsed {
             width: 0;
             min-width: 0;
@@ -99,17 +98,31 @@
 
         .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
         
-        .channel-item { cursor: grab; border-bottom: 1px solid transparent; transition: background 0.1s, border-color 0.2s; border-left: 3px solid transparent; }
+        /* 드래그 앤 드롭 스타일 수정 */
+        .channel-item { 
+            border-bottom: 1px solid transparent; 
+            transition: background 0.1s, border-color 0.2s; 
+            border-left: 3px solid transparent; 
+        }
         .channel-item.dragging { opacity: 0.5; background: #333; }
         .channel-item.drag-over { border-top: 2px solid var(--accent-color); }
 
         .channel-header { 
             display: flex; align-items: center; padding: 12px 15px; transition: background 0.1s; 
+            cursor: default; /* 기본 커서 */
         }
         .channel-header:hover { background: var(--item-hover); }
 
-        .drag-handle { color: #555; margin-right: 10px; cursor: grab; font-size: 0.9rem; padding: 2px; }
-        .drag-handle:hover { color: #999; }
+        /* 드래그 핸들 아이콘 스타일 강화 */
+        .drag-handle { 
+            color: #555; 
+            margin-right: 10px; 
+            cursor: grab; /* 손바닥 모양 */
+            font-size: 1.1rem; 
+            padding: 5px 8px; /* 클릭 영역 확보 */
+        }
+        .drag-handle:hover { color: #ccc; background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .drag-handle:active { cursor: grabbing; }
 
         .channel-icon { 
             width: 30px; height: 30px; border-radius: 50%; margin-right: 12px; 
@@ -171,7 +184,15 @@
             width: 100%;
         }
 
-        /* [추가됨] 사이드바 토글 버튼 스타일 */
+        .title-wrapper {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            overflow: hidden;
+            margin-right: 20px;
+        }
+
+        /* 사이드바 토글 버튼 */
         .toggle-sidebar-btn {
             background: none;
             border: none;
@@ -187,15 +208,6 @@
         }
         .toggle-sidebar-btn:hover {
             color: var(--accent-color);
-        }
-
-        /* [수정됨] 제목 영역을 flex로 감싸서 버튼과 배치 */
-        .title-wrapper {
-            display: flex;
-            align-items: center;
-            flex: 1;
-            overflow: hidden;
-            margin-right: 20px;
         }
 
         .main-header h1 { 
@@ -356,7 +368,6 @@
                     </button>
                     <h1 id="currentPlaylistTitle">Select Playlist</h1>
                 </div>
-                
                 <i class="fas fa-times" id="mainClearBtn" style="display:none; cursor:pointer; color:#666;" onclick="location.reload()" title="화면 비우기"></i>
             </div>
             
@@ -396,7 +407,6 @@
     <script>
         const API_SERVER_URL = '';
         
-        // 로컬 스토리지 키 값
         let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
         let currentPlaylistId = null;
         let currentPlaylistTitle = ''; 
@@ -410,7 +420,7 @@
 
         window.addEventListener('load', () => { renderChannelList(); });
 
-        // [추가됨] 사이드바 토글 함수
+        // 사이드바 토글
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('collapsed');
@@ -458,8 +468,7 @@
                 if (handleSegment) {
                     handle = handleSegment;
                 }
-            } catch (e) {
-            }
+            } catch (e) { }
 
             if (!handle) {
                 const handleMatch = rawInput.match(/(@[\w.-]+)/);
@@ -505,13 +514,15 @@
             }
         });
 
+        // [중요] 채널 리스트 렌더링 및 드래그 이벤트 설정
         function renderChannelList() {
             const wrapper = document.getElementById('channelListWrapper');
             wrapper.innerHTML = '';
             myChannels.forEach((channel, index) => {
                 const div = document.createElement('div');
                 div.className = 'channel-item';
-                div.setAttribute('draggable', 'true'); 
+                // 기본적으로 드래그 불가능 (핸들을 잡을 때만 활성화)
+                div.setAttribute('draggable', 'false'); 
                 div.setAttribute('data-index', index); 
                 
                 div.ondragstart = handleDragStart;
@@ -523,7 +534,7 @@
 
                 div.innerHTML = `
                     <div class="channel-header" onclick="togglePlaylist(this, '${channel.channelId}')">
-                        <i class="fas fa-bars drag-handle" title="Drag to reorder"></i>
+                        <i class="fas fa-bars drag-handle" title="Drag handle" onmousedown="enableDrag(event)"></i>
                         <img src="${channel.thumbnail}" class="channel-icon" alt="">
                         <span class="channel-name">${channel.title}</span>
                         <div class="action-area">
@@ -539,18 +550,48 @@
             });
         }
 
+        // 핸들 클릭 시 부모 요소 드래그 허용
+        function enableDrag(e) {
+            const item = e.target.closest('.channel-item');
+            if (item) {
+                item.setAttribute('draggable', 'true');
+            }
+        }
+
         function handleDragStart(e) {
             dragSrcEl = e.currentTarget;
             e.dataTransfer.effectAllowed = 'move';
-            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+            setTimeout(() => {
+                e.currentTarget.classList.add('dragging');
+            }, 0);
         }
-        function handleDragOver(e) { if (e.preventDefault) e.preventDefault(); return false; }
-        function handleDragEnter(e) { e.currentTarget.classList.add('drag-over'); }
-        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+        function handleDragOver(e) { 
+            if (e.preventDefault) e.preventDefault(); 
+            e.dataTransfer.dropEffect = 'move';
+            return false; 
+        }
+
+        function handleDragEnter(e) { 
+            const targetItem = e.target.closest('.channel-item');
+            if (targetItem && targetItem !== dragSrcEl) {
+                targetItem.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) { 
+            const targetItem = e.target.closest('.channel-item');
+            if (targetItem && e.relatedTarget && !targetItem.contains(e.relatedTarget)) {
+                targetItem.classList.remove('drag-over');
+            }
+        }
+
         function handleDrop(e) {
             if (e.stopPropagation) e.stopPropagation();
-            const target = e.currentTarget;
-            if (dragSrcEl !== target) {
+            const target = e.target.closest('.channel-item');
+
+            if (dragSrcEl && target && dragSrcEl !== target) {
                 const oldIndex = parseInt(dragSrcEl.getAttribute('data-index'));
                 const newIndex = parseInt(target.getAttribute('data-index'));
                 const item = myChannels.splice(oldIndex, 1)[0];
@@ -559,9 +600,13 @@
             }
             return false;
         }
+
         function handleDragEnd(e) {
             e.currentTarget.classList.remove('dragging');
-            document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('drag-over'));
+            document.querySelectorAll('.channel-item').forEach(item => {
+                item.classList.remove('drag-over');
+                item.setAttribute('draggable', 'false'); // 드래그 종료 시 다시 잠금
+            });
         }
 
         async function togglePlaylist(element, channelId) {
