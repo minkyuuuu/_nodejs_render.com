@@ -42,75 +42,98 @@ app.get('/api/sync-download', (req, res) => {
     res.json({ data: playlistCloudData });
 });
 
-// [수정됨] 1. 유튜버 핸들(ID)로 채널 정보 찾기 (정확도 개선)
+// 공통 함수: ID로 채널 상세 정보 조회 (검색 UI 통합을 위해 추가)
+async function getChannelDetails(channelId) {
+    const response = await youtube.channels.list({
+        part: 'snippet,statistics,contentDetails',
+        id: channelId,
+    });
+    if (!response.data.items || !response.data.items.length) return null;
+    const channel = response.data.items[0];
+    return {
+        channelId: channel.id,
+        handle: channel.snippet.customUrl,
+        title: channel.snippet.title,
+        thumbnail: channel.snippet.thumbnails.default.url,
+        description: channel.snippet.description,
+        videoCount: parseInt(channel.statistics.videoCount) || 0,
+    };
+}
+
+// [수정됨] 유튜버 검색 및 핸들/ID 처리 (동영상 앱과 동일한 로직 적용)
 app.get('/api/find-channel', async (req, res) => {
     let { handle } = req.query;
-    if (!handle) return res.status(400).json({ error: 'Handle is required' });
-
     try {
-        let response;
-        
-        // 입력값이 채널 ID 형태(UC로 시작)인지 핸들(@로 시작)인지 구분
-        if (handle.startsWith('UC')) {
-            // A. 채널 ID로 검색 (channels.list 사용)
-            response = await youtube.channels.list({
-                part: 'snippet',
-                id: handle,
-                maxResults: 1,
-            });
-        } else {
-            // B. 핸들로 검색 (channels.list의 forHandle 사용) -> 이게 핵심입니다!
-            // 핸들에 @가 없으면 붙여줌
-            if (!handle.startsWith('@')) handle = '@' + handle;
-            
-            response = await youtube.channels.list({
-                part: 'snippet',
-                forHandle: handle, // 정확한 핸들 일치 검색
-                maxResults: 1,
-            });
+        let targetChannelId = null;
+
+        // 1. ID (UC...) 확인
+        if (handle.startsWith('UC') && handle.length > 20) {
+            targetChannelId = handle;
+        } 
+        // 2. URL 확인
+        else if (handle.includes('youtube.com/channel/')) {
+            const match = handle.match(/channel\/(UC[a-zA-Z0-9_-]{22})/);
+            if (match) targetChannelId = match[1];
         }
 
-        if (!response.data.items || response.data.items.length === 0) {
-            // 검색 결과가 없으면 기존 방식(search.list)으로 한 번 더 시도 (백업 로직)
-            // (핸들이 아니라 일반 검색어일 경우를 대비)
-            const searchResponse = await youtube.search.list({
-                 part: 'snippet',
-                 type: 'channel',
-                 q: handle,
-                 maxResults: 1,
+        // ID가 바로 식별되면 조회 후 반환
+        if (targetChannelId) {
+            const details = await getChannelDetails(targetChannelId);
+            if (details) return res.json(details);
+            return res.status(404).json({ error: '해당 ID의 채널을 찾을 수 없습니다.' });
+        }
+
+        // 3. 핸들(@) 확인
+        if (handle.startsWith('@')) {
+            try {
+                const handleResponse = await youtube.channels.list({ part: 'id', forHandle: handle });
+                if (handleResponse.data.items && handleResponse.data.items.length > 0) {
+                    targetChannelId = handleResponse.data.items[0].id;
+                }
+            } catch (err) { console.log("Handle lookup failed:", err.message); }
+        }
+
+        // 4. 검색 수행 (ID/핸들 아님)
+        if (!targetChannelId) {
+            // 검색 결과 10개까지 조회
+            const search = await youtube.search.list({ 
+                part: 'snippet', 
+                type: 'channel', 
+                q: handle, 
+                maxResults: 10 
             });
-             
-            if (searchResponse.data.items.length === 0) {
-                return res.status(404).json({ error: 'Channel not found' });
+            
+            if (!search.data.items || !search.data.items.length) {
+                return res.status(404).json({ error: '검색된 채널이 없습니다.' });
             }
             
-            // 검색 결과 사용
-            const searchChannel = searchResponse.data.items[0];
-            return res.json({
-                channelId: searchChannel.snippet.channelId,
-                title: searchChannel.snippet.channelTitle,
-                thumbnail: searchChannel.snippet.thumbnails.default.url,
-                description: searchChannel.snippet.description
-            });
+            // 검색 결과가 1개면 바로 진행, 여러 개면 목록 반환
+            if (search.data.items.length === 1) {
+                targetChannelId = search.data.items[0].id.channelId;
+            } else {
+                const candidates = search.data.items.map(item => ({
+                    channelId: item.id.channelId,
+                    title: item.snippet.title,
+                    description: item.snippet.description,
+                    thumbnail: item.snippet.thumbnails.default.url
+                }));
+                return res.json({ multiple: true, candidates });
+            }
         }
 
-        // channels.list 결과 사용 (정확도 100%)
-        const channel = response.data.items[0];
-        res.json({
-            channelId: channel.id, // channels.list는 id가 최상위에 있음
-            title: channel.snippet.title,
-            thumbnail: channel.snippet.thumbnails.default.url,
-            description: channel.snippet.description,
-            handle: channel.snippet.customUrl // 실제 핸들 정보
-        });
+        // 5. 최종 상세 조회
+        const details = await getChannelDetails(targetChannelId);
+        if (!details) return res.status(404).json({ error: '채널 상세 정보를 가져올 수 없습니다.' });
+        
+        res.json(details);
 
-    } catch (error) {
-        console.error('[YouTube API Error]:', error.message);
-        res.status(500).json({ error: 'Failed to search channel (Server Error)' });
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ error: '서버 에러: ' + e.message }); 
     }
 });
 
-// 2. 특정 채널의 재생목록 리스트 가져오기
+// 2. 특정 채널의 재생목록 리스트 가져오기 (기존 유지)
 app.get('/api/channel-playlists', async (req, res) => {
     const { channelId } = req.query;
     if (!channelId) return res.status(400).json({ error: 'Channel ID is required' });
@@ -140,7 +163,7 @@ app.get('/api/channel-playlists', async (req, res) => {
     }
 });
 
-// 3. 특정 재생목록의 동영상 리스트 가져오기 (페이지네이션 적용)
+// 3. 특정 재생목록의 동영상 리스트 가져오기 (기존 유지)
 app.get('/api/playlist/:playlistId', async (req, res) => {
   const { playlistId } = req.params;
   const { pageToken } = req.query;

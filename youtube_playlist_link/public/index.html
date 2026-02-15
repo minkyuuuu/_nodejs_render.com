@@ -64,13 +64,13 @@
         }
 
         .sidebar-header { 
-            padding: 20px; 
+            padding: 15px; 
             background: var(--header-bg); 
             border-bottom: 1px solid var(--border-color); 
         }
 
         .sidebar-header h2 { 
-            font-size: 1.1rem; margin-bottom: 15px; color: var(--accent-color); 
+            font-size: 1.1rem; margin-bottom: 10px; color: var(--accent-color); 
             display: flex; align-items: center; gap: 8px; 
         }
 
@@ -84,16 +84,23 @@
         }
         .sync-btn:hover { background: #3e3e42; color: var(--accent-color); border-color: var(--accent-color); }
 
+        /* [수정] 입력 그룹 스타일 개선 (Video Library UI 반영) */
+        .input-group { margin-bottom: 10px; }
+        .input-label { font-size: 0.75rem; color: #888; margin-bottom: 4px; display: block; }
         .add-channel-box { display: flex; gap: 5px; }
         .add-channel-box input { 
             flex: 1; padding: 8px; background: #3c3c3c; border: 1px solid #3c3c3c; 
-            color: white; border-radius: 4px; outline: none; 
+            color: white; border-radius: 4px; outline: none; font-size: 0.85rem; 
         }
         .add-channel-box input:focus { border-color: var(--accent-color); }
         .add-channel-box button { 
-            padding: 8px 12px; background: #0e639c; border: none; 
-            color: white; border-radius: 4px; cursor: pointer; 
+            width: 36px; padding: 0; display: flex; align-items: center; justify-content: center; 
+            background: #0e639c; border: none; color: white; border-radius: 4px; 
+            cursor: pointer; transition: background 0.2s; 
         }
+        .add-channel-box button:hover { background: #1177bb; }
+        .add-channel-box button.search-btn { background: #28a745; }
+        .add-channel-box button.search-btn:hover { background: #34c759; }
 
         .channel-list { flex: 1; overflow-y: auto; padding: 10px 0 150px 0; }
         
@@ -331,6 +338,20 @@
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; }
         .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
 
+        /* [추가] 검색 팝업 스타일 (Video Library UI 반영) */
+        .search-modal-content { background: var(--sidebar-bg); padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .search-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .search-header h3 { color: var(--text-highlight); font-weight: normal; margin: 0; }
+        .search-header .close-btn-popup { font-size: 1.5rem; background: none; border: none; color: #888; cursor: pointer; }
+        .candidate-list { overflow-y: auto; flex: 1; }
+        .candidate-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; }
+        .candidate-item:hover { background: var(--item-hover); }
+        .candidate-item:last-child { border-bottom: none; }
+        .candidate-thumb { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        .candidate-info { flex: 1; min-width: 0; }
+        .candidate-title { font-size: 0.95rem; color: var(--text-highlight); margin-bottom: 4px; font-weight: bold; }
+        .candidate-desc { font-size: 0.8rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
         .empty-state { text-align: center; margin-top: 100px; color: #555; }
         .empty-state i { font-size: 4rem; margin-bottom: 20px; color: #333; }
         .spinner { 
@@ -356,9 +377,21 @@
                 </button>
             </div>
 
-            <div class="add-channel-box">
-                <input type="text" id="channelInput" placeholder="채널 핸들 입력 (@...)" onkeypress="if(event.keyCode==13) document.getElementById('addChannelBtn').click()">
-                <button id="addChannelBtn"><i class="fas fa-plus"></i></button>
+            <!-- [수정] 입력 필드를 2개로 분리 -->
+            <div class="input-group">
+                <span class="input-label">URL / 핸들(@) / ID 추가</span>
+                <div class="add-channel-box">
+                    <input type="text" id="urlInput" placeholder="https://... 또는 @Handle">
+                    <button id="addUrlBtn" title="URL/핸들로 추가"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <span class="input-label">채널명 검색</span>
+                <div class="add-channel-box">
+                    <input type="text" id="nameInput" placeholder="채널 이름으로 검색">
+                    <button id="searchNameBtn" class="search-btn" title="이름으로 검색"><i class="fas fa-search"></i></button>
+                </div>
             </div>
         </div>
         <div class="channel-list" id="channelListWrapper"></div>
@@ -411,9 +444,21 @@
         </div>
     </div>
 
+    <!-- [추가] 검색 결과 선택 팝업 -->
+    <div class="modal-overlay" id="searchModal">
+        <div class="search-modal-content">
+            <div class="search-header">
+                <h3><i class="fas fa-search"></i> 검색 결과 선택</h3>
+                <button class="close-btn-popup" onclick="closeSearchModal()">×</button>
+            </div>
+            <div id="candidateList" class="candidate-list"></div>
+        </div>
+    </div>
+
     <script>
         const API_SERVER_URL = '';
         
+        // localStorage에서 데이터 로드 (localForage를 사용하지 않는 경우)
         let myChannels = JSON.parse(localStorage.getItem('myChannels')) || [];
         let currentPlaylistId = null;
         let currentPlaylistTitle = ''; 
@@ -421,15 +466,13 @@
         let currentVideoList = [];
         let loadingPlaylistId = null; 
         
-        // SortableJS 인스턴스를 저장할 변수
         let sortableInstance = null;
-
         let currentSort = 'asc';
         let copyIndex = 0;
 
         window.addEventListener('load', () => { 
             renderChannelList(); 
-            initSortable(); // 로드 시 Sortable 초기화
+            initSortable(); 
         });
 
         function toggleSidebar() {
@@ -464,94 +507,174 @@
             } catch (e) { alert('불러오기 실패: ' + e.message); }
         }
 
-        document.getElementById('addChannelBtn').addEventListener('click', async () => {
-            const inputElement = document.getElementById('channelInput');
-            const rawInput = inputElement.value.trim();
+        // [수정] 1. URL/핸들/ID 추가 버튼 로직 (엄격한 검증)
+        document.getElementById('addUrlBtn').onclick = async () => {
+            const input = document.getElementById('urlInput');
+            let rawInput = input.value.trim();
             if (!rawInput) return;
 
-            let handle = '';
-            let channelId = '';
-
-            try {
-                const urlObj = new URL(rawInput);
-                const pathSegments = urlObj.pathname.split('/');
-                const handleSegment = pathSegments.find(s => s.startsWith('@'));
-                if (handleSegment) {
-                    handle = handleSegment;
-                }
-            } catch (e) { }
-
-            if (!handle) {
-                const handleMatch = rawInput.match(/(@[\w.-]+)/);
-                if (handleMatch) {
-                    handle = handleMatch[1];
-                }
-            }
-
+            let apiUrl = '';
+            
+            // 패턴 검사
+            const handleMatch = rawInput.match(/@([\w.-]+)/);
+            // v= 파라미터나 embed 주소 등이 포함된 경우 Video ID 추출 시도 가능하나, Playlist 앱은 Channel 기반이므로 
+            // 여기서는 Channel URL/ID 위주로 처리합니다. (기존 로직 보존)
+            const videoMatch = rawInput.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/);
             const channelIdMatch = rawInput.match(/(?:channel\/|^)(UC[\w-]{21}[AQgw])/);
-            if (channelIdMatch) {
-                channelId = channelIdMatch[1];
-            }
 
-            if (!handle && !channelId) {
-                alert("채널 URL, 핸들(@), 또는 채널 ID를 정확히 입력해주세요.");
+            if (videoMatch) {
+                // 비디오 ID가 있으면 해당 비디오의 채널을 찾습니다 (기존 Server API 필요 없음/혹은 find-channel-by-video 사용)
+                // 하지만 Playlist 앱 서버에는 find-channel-by-video가 없습니다. 
+                // 따라서 여기서는 명시적이지 않은 경우 채널 ID 검색만 수행하도록 합니다.
+                 alert("동영상 URL은 지원하지 않습니다. 채널 URL이나 핸들을 입력해주세요.");
+                 return;
+            } else if (handleMatch) {
+                // @핸들인 경우
+                apiUrl = `${API_SERVER_URL}/api/find-channel?handle=${encodeURIComponent("@" + handleMatch[1])}`;
+            } else if (channelIdMatch) {
+                // UC 아이디인 경우
+                apiUrl = `${API_SERVER_URL}/api/find-channel?handle=${encodeURIComponent(channelIdMatch[1])}`;
+            } else {
+                alert("올바른 URL, 핸들(@), 또는 채널 ID 형식이 아닙니다.\n채널 이름으로 찾으시려면 아래 '채널명 검색'을 이용해주세요.");
                 return;
             }
-
-            const queryParam = handle ? `handle=${encodeURIComponent(handle)}` : `handle=${encodeURIComponent(channelId)}`;
-
-            if (myChannels.some(ch => (handle && ch.handle === handle) || (channelId && ch.channelId === channelId))) {
-                return alert('이미 추가된 채널입니다.');
-            }
-
+            
             try {
-                inputElement.placeholder = "Searching...";
-                const response = await fetch(`${API_SERVER_URL}/api/find-channel?${queryParam}`);
-                const channelData = await response.json();
-                if (!response.ok) throw new Error(channelData.error || '채널 없음');
-                
-                if (myChannels.some(ch => ch.channelId === channelData.channelId)) {
-                    alert('이미 추가된 채널입니다.');
-                    inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
+                input.placeholder = "Searching...";
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                if (data.multiple && data.candidates) {
+                    openSearchModal(data.candidates);
+                    input.placeholder = "https://... 또는 @Handle";
                     return;
                 }
 
-                myChannels.push({ ...channelData, handle: handle || channelData.handle, playlists: [] });
-                saveAndRender();
-                inputElement.value = ''; inputElement.placeholder = "채널 핸들 입력 (@...)";
-            } catch (error) {
-                alert(error.message); 
-                inputElement.placeholder = "채널 핸들 입력 (@...)";
+                addChannelData(data);
+                input.value = '';
+                input.placeholder = "https://... 또는 @Handle";
+            } catch (e) { 
+                alert("추가 실패: " + e.message); 
+                input.placeholder = "https://... 또는 @Handle";
             }
+        };
+
+        // [수정] 2. 이름 검색 버튼 로직
+        document.getElementById('searchNameBtn').onclick = async () => {
+            const input = document.getElementById('nameInput');
+            let rawInput = input.value.trim();
+            if (!rawInput) return;
+
+            const apiUrl = `${API_SERVER_URL}/api/find-channel?handle=${encodeURIComponent(rawInput)}`;
+            
+            try {
+                input.placeholder = "Searching...";
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                if (data.multiple && data.candidates) {
+                    openSearchModal(data.candidates);
+                    input.placeholder = "채널 이름으로 검색";
+                    return;
+                }
+
+                addChannelData(data);
+                input.value = '';
+                input.placeholder = "채널 이름으로 검색";
+            } catch (e) { 
+                alert("검색 실패: " + e.message); 
+                input.placeholder = "채널 이름으로 검색";
+            }
+        };
+
+        // 엔터키 처리
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('addUrlBtn').click();
+        });
+        document.getElementById('nameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('searchNameBtn').click();
         });
 
-        // [중요] SortableJS 초기화 함수
+        // [추가] 채널 데이터 추가 함수 (재생목록 앱 구조에 맞춤)
+        function addChannelData(data) {
+            if (myChannels.some(ch => ch.channelId === data.channelId)) {
+                return alert('이미 추가된 채널입니다.');
+            }
+            
+            // 재생목록 앱은 초기 추가 시 playlists: [] 로 시작합니다.
+            myChannels.push({ 
+                channelId: data.channelId,
+                title: data.title,
+                thumbnail: data.thumbnail,
+                description: data.description,
+                handle: data.handle,
+                playlists: [] 
+            });
+            saveAndRender();
+        }
+
+        // [추가] 검색 모달 관련 함수
+        function openSearchModal(candidates) {
+            const list = document.getElementById('candidateList');
+            list.innerHTML = candidates.map(c => `
+                <div class="candidate-item" onclick="selectCandidate('${c.channelId}')">
+                    <img src="${c.thumbnail}" class="candidate-thumb">
+                    <div class="candidate-info">
+                        <div class="candidate-title">${c.title}</div>
+                        <div class="candidate-desc">${c.description || '설명 없음'}</div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('searchModal').classList.add('active');
+        }
+
+        function closeSearchModal() {
+            document.getElementById('searchModal').classList.remove('active');
+        }
+
+        async function selectCandidate(channelId) {
+            closeSearchModal();
+            try {
+                // 선택한 ID로 다시 정확한 검색 수행 (기존 find-channel API 재활용)
+                const res = await fetch(`${API_SERVER_URL}/api/find-channel?handle=${channelId}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                
+                addChannelData(data);
+                
+                // 입력창 초기화
+                document.getElementById('urlInput').value = '';
+                document.getElementById('nameInput').value = '';
+            } catch (e) {
+                alert("채널 추가 실패: " + e.message);
+            }
+        }
+
         function initSortable() {
             const el = document.getElementById('channelListWrapper');
-            if(sortableInstance) sortableInstance.destroy(); // 기존 인스턴스가 있다면 제거
+            if(sortableInstance) sortableInstance.destroy(); 
 
             sortableInstance = new Sortable(el, {
-                animation: 150, // 부드러운 이동 효과 (ms)
-                handle: ".drag-handle", // [핵심] 이 클래스를 가진 요소만 드래그 가능
-                ghostClass: "sortable-ghost", // 드래그 중인 자리에 생기는 잔상 스타일
-                dragClass: "sortable-drag", // 드래그 중인 아이템 스타일
+                animation: 150, 
+                handle: ".drag-handle", 
+                ghostClass: "sortable-ghost", 
+                dragClass: "sortable-drag", 
                 onEnd: function (evt) {
-                    // 드래그가 끝났을 때 배열 데이터 순서 변경
                     const item = myChannels.splice(evt.oldIndex, 1)[0];
                     myChannels.splice(evt.newIndex, 0, item);
-                    saveToStorage(); // 데이터만 저장 (화면은 이미 Sortable이 바꿨으므로 다시 렌더링 X)
+                    saveToStorage(); 
                 }
             });
         }
 
-        // [수정] 복잡한 네이티브 드래그 코드를 제거하고 단순하게 HTML 생성
         function renderChannelList() {
             const wrapper = document.getElementById('channelListWrapper');
             wrapper.innerHTML = '';
             myChannels.forEach((channel, index) => {
                 const div = document.createElement('div');
                 div.className = 'channel-item';
-                // data-index는 Sortable이 내부적으로 처리하지만 참조용으로 남김
                 div.setAttribute('data-id', channel.channelId); 
 
                 div.innerHTML = `
@@ -799,7 +922,10 @@
         }
 
         window.onclick = (e) => { 
-            if(e.target.classList.contains('modal-overlay')) closePlayer();
+            if(e.target.classList.contains('modal-overlay')) {
+                if(e.target.id === 'playerModal') closePlayer();
+                if(e.target.id === 'searchModal') closeSearchModal();
+            }
         };
     </script>
 </body>
